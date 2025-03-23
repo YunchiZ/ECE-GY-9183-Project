@@ -1,0 +1,93 @@
+name: tracking_service
+# 以下三个容器本身的功能阐述:
+# minio: 存储MLflow的实验数据、模型权重和日志(artifacts) 提供了API用于存储数据到minio
+# 9000: API端口   9001: Web UI端口
+# minio create bucket: 创建一个名为 mlflow-artifacts 用于存储上述artifacts
+# postgreSQL: 用于存储MLflow的实验元数据(实验名称、运行ID、超参数、指标等)
+# 5432: PostgreSQL的默认端口
+# MLFlow 8000: WebUI和API端口
+
+services:
+  # MinIO object store service provides storage for artifacts, models
+  minio:
+    image: minio/minio
+    container_name: minio
+    restart: always
+    expose:
+      - "9000"
+    ports:  
+      - "9000:9000"  # The API for object storage is hosted on port 9000
+      - "9001:9001"  # The web-based UI is on port 9001
+    environment:
+      MINIO_ROOT_USER: "your-access-key"
+      MINIO_ROOT_PASSWORD: "your-secret-key"
+    healthcheck:
+      test: timeout 5s bash -c ':> /dev/tcp/127.0.0.1/9000' || exit 1
+      interval: 1s
+      timeout: 10s
+      retries: 5 # 容器在初始化时会自动重启最多5次进行健康检验
+    command: server /data --console-address ":9001" # 覆盖默认指令并在启动时执行该指令 
+    # server: 核心子命令 用于启动对象存储服务 
+    # /data 指定 MinIO 使用的数据存储目录 即所有上传的文件会存储在容器内的 /data 目录中
+    # 并指定监听地址和端口 为 9001
+    volumes:
+      - minio_data:/data  # 将docker管理的卷minio_data挂载到data上 
+
+  # When the minio service has started, launch a container with the minio client
+  # and use it to create a bucket named mlflow-artifacts 
+  minio-create-bucket: # 专门用于执行客户端命令的容器
+    image: minio/mc # 使用官方客户端镜像
+    depends_on:
+      minio: # 表明此服务依赖于另一个服务
+        condition: service_healthy # 只有minio服务被检测为健康时 才启动该服务
+    entrypoint: > # 启动命令 
+      /bin/sh -c " # 运行一个shell脚本
+      mc alias set minio http://minio:9000 your-access-key your-secret-key &&  
+      #设置客户端别名为 minio 连接到对应的服务URL 
+      if ! mc ls minio/mlflow-artifacts; then  # 检查mlflow-artifacts是否存在
+        mc mb minio/mlflow-artifacts &&
+        # mc:创建; mb:make bucket创建存储桶
+        echo 'Bucket mlflow-artifacts creatd'
+      else
+        echo 'Bucket mlflow-artifacts already exists';
+      fi"
+
+  # Postgresql server provides storage for parameters, metrics from experiment runs
+  # postgres用于记录实验超参数 实验指标 
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mlflowdb # 所创建的数据库的名称
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # use a volume so storage persists beyond container lifetype
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.20.2  # MLFlow官方镜像
+    container_name: mlflow
+    restart: always
+    depends_on:
+      - minio
+      - postgres
+      - minio-create-bucket  # make sure minio and posgres services are alive, and bucket is created, before mlflow starts
+    environment:
+      MLFLOW_TRACKING_URI: http://0.0.0.0:8000 # 监听所有网络上的8000端口
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000  # 对象存储的URL地址 API运行在9000端口
+      AWS_ACCESS_KEY_ID: "your-access-key"
+      AWS_SECRET_ACCESS_KEY: "your-secret-key"
+    ports:
+      - "8000:8000" 将MLFlow监听的端口映射到主机的8000端口
+    command: >
+      /bin/sh -c "pip install psycopg2-binary boto3 && 
+      # 运行一个shell脚本 安装 PostgreSQL 的 Python 客户端驱动 boto3: AWS客户端 与MinIO交互 
+      mlflow server --backend-store-uri postgresql://user:password@postgres/mlflowdb # 
+      --artifacts-destination s3://mlflow-artifacts/ --serve-artifacts --host 0.0.0.0 --port 8000"
+
+volumes:
+  minio_data:
+  postgres_data:

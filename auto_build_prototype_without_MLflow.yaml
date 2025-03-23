@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  etl:
+    image: your-dockerhub-username/etl-image:latest
+    container_name: etl-container
+    volumes:
+      - etl_data:/app/data  # 使用 Docker 卷存储 ETL 数据
+    networks:
+      - mlops-network
+
+  train:
+    image: your-dockerhub-username/train-image:latest
+    container_name: train-container
+    volumes:
+      - etl_data:/app/data  # 共享 etl_data 卷，读取 ETL 数据
+      - train_data:/app/models  # 使用 Docker 卷存储模型权重和日志
+    depends_on:
+      - etl
+    networks:
+      - mlops-network
+
+  deploy:
+    image: your-dockerhub-username/deploy-image:latest
+    container_name: deploy-container
+    ports:
+      - "8000:8000"  # 暴露端口，用于访问部署服务
+    volumes:
+      - train_data:/app/models  # 共享 train_data 卷，读取模型权重
+    depends_on:
+      - train
+    networks:
+      - mlops-network
+
+  monitor:
+    image: your-dockerhub-username/monitor-image:latest
+    container_name: monitor-container
+    volumes:
+      - monitor_data:/app/logs  # 使用 Docker 卷存储监控日志
+    depends_on:
+      - deploy
+    networks:
+      - mlops-network
+
+volumes:
+  etl_data:  # 定义 etl_data 卷
+  train_data:  # 定义 train_data 卷
+  monitor_data:  # 定义 monitor_data 卷
+
+networks:
+  mlops-network:  # 会自动分配

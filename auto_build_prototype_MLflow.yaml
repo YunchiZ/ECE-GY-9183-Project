@@ -1,0 +1,138 @@
+version: '3.8'
+
+services:
+  etl:
+    image: your-dockerhub-username/etl-image:latest
+    container_name: etl-container
+    volumes:
+      - etl_data:/app/data
+    networks:
+      - mlops-network
+
+  train:
+    image: your-dockerhub-username/train-image:latest
+    container_name: train-container
+    volumes:
+      - etl_data:/app/data
+      - train_data:/app/models  # 保留 train_data 卷
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:8000
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: "your-access-key"
+      AWS_SECRET_ACCESS_KEY: "your-secret-key"
+      SAVE_TO_TRAIN_DATA: "false"  # 默认不保存到 train_data 卷
+    depends_on:
+      - etl
+      - mlflow
+    networks:
+      - mlops-network
+
+  deploy:
+    image: your-dockerhub-username/deploy-image:latest
+    container_name: deploy-container
+    ports:
+      - "8080:8000"  # 修改端口映射，避免与 mlflow 冲突
+    volumes:
+      - train_data:/app/models  # 保留 train_data 卷
+    depends_on:
+      - train
+    networks:
+      - mlops-network
+
+  monitor:
+    image: your-dockerhub-username/monitor-image:latest
+    container_name: monitor-container
+    volumes:
+      - monitor_data:/app/logs
+    depends_on:
+      - deploy
+    networks:
+      - mlops-network
+
+  # MLflow 服务
+  minio:
+    image: minio/minio
+    container_name: minio
+    restart: always
+    expose:
+      - "9000"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: "your-access-key"
+      MINIO_ROOT_PASSWORD: "your-secret-key"
+    healthcheck:
+      test: timeout 5s bash -c ':> /dev/tcp/127.0.0.1/9000' || exit 1
+      interval: 1s
+      timeout: 10s
+      retries: 5
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - mlops-network
+
+  minio-create-bucket:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set minio http://minio:9000 your-access-key your-secret-key &&
+      if ! mc ls minio/mlflow-artifacts; then
+        mc mb minio/mlflow-artifacts &&
+        echo 'Bucket mlflow-artifacts created'
+      else
+        echo 'Bucket mlflow-artifacts already exists';
+      fi"
+    networks:
+      - mlops-network
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mlflowdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mlops-network
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.20.2
+    container_name: mlflow
+    restart: always
+    depends_on:
+      - minio
+      - postgres
+      - minio-create-bucket
+    environment:
+      MLFLOW_TRACKING_URI: http://0.0.0.0:8000
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: "your-access-key"
+      AWS_SECRET_ACCESS_KEY: "your-secret-key"
+    ports:
+      - "8000:8000"
+    command: >
+      /bin/sh -c "pip install psycopg2-binary boto3 &&
+      mlflow server --backend-store-uri postgresql://user:password@postgres/mlflowdb
+      --artifacts-destination s3://mlflow-artifacts/ --serve-artifacts --host 0.0.0.0 --port 8000"
+    networks:
+      - mlops-network
+
+volumes:
+  etl_data:
+  train_data:
+  monitor_data:
+  minio_data:
+  postgres_data:
+
+networks:
+  mlops-network:
