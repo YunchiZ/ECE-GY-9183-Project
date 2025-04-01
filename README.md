@@ -24,11 +24,11 @@ link to their contributions in all repos here. -->
 
 | Name             | Responsible for                   | Link to their commits in this repo               |
 |------------------|-----------------------------------|--------------------------------------------------|
-| Team: Coconut 🥥 | Project Design, Proposal & Report |https://github.com/YunchiZ/ECE-GY-9183-Project.git|                                    
-| Haorong Liang 👩‍🚀 | ETL: data pipeline                |                                    |
+| Team: Coconut 🥥 | Project Proposal & Report |https://github.com/YunchiZ/ECE-GY-9183-Project.git|                                    
+| Haorong Liang 👩‍🚀 | ETL: Data Pipeline                |                                    |
 | Yunchi  Zhao  🐱‍👤 | Model Training                    |                                    |
 | Ziyan   Zhao  🤠 | Model Serving & Monitoring        |https://github.com/YunchiZ/ECE-GY-9183-Project/tree/deploy|
-| Tianqi  Xia   🏂 | Monitoring & Continous X pipeline |                                    |
+| Tianqi  Xia   🏂 | Continous X Pipeline |                                    |
 
 
 ### System diagram
