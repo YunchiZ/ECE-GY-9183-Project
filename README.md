@@ -1,6 +1,19 @@
 
 ## MLops: Info Lens 👓 - Automatic News Classification, Content Summary, True and False Identification
- 
+
+### Value Proposition
+A cloud-deployed machine learning operation system that are designed for automatic and quick-response news content extraction. 
+
+The system is aimed at benefiting any user or professional journalist who wants to process news information efficiently through 3 functions:
+- [x] **News Content Summary**
+- [x] **Identification**: True / Fake 
+- [x] **News Category Classification**: Business/Politics/Food & Drink/Travel/Parenting/Style & beauty/Wellness/World news/Sports/Entertainment
+
+The system is **expected** to achieve a total of tens of milliseconds of reasoning time for three functional responses per request, avoiding the high cost of time-consuming and requiring professional processing and verification when compared to traditional non-ML businesses. Besides, the system **will be** host at least dozens of API calls per second, which makes business efficiency significantly higher than traditional services.
+
+The overall system is judged by the following **business** metric: 
+- Feedback from users: average satisfaction per batch(for content summary); average accuracy per batch(for identification & classification)
+- 
 
 <!-- 
 Discuss: Value proposition: Your will propose a machine learning system that can be 
