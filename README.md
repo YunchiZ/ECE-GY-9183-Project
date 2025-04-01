@@ -72,7 +72,7 @@ diagram, (3) justification for your strategy, (4) relate back to lecture materia
 
 <!-- Make sure to clarify how you will satisfy the Unit 4 and Unit 5 requirements, 
 and which optional "difficulty" points you are attempting. -->
-Owe aim to build and optimize large-scale models for three natural language processing (NLP) tasks:
+Our aim to build and optimize large-scale models for three natural language processing (NLP) tasks:
 
 + Text Summarization: Generating summaries for long articles.
 + Text Classification: Categorizing news articles into predefined categories (e.g., politics, sports, health).
