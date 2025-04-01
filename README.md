@@ -27,8 +27,8 @@ link to their contributions in all repos here. -->
 | Team: Coconut 🥥 | Project Design, Proposal & Report |https://github.com/YunchiZ/ECE-GY-9183-Project.git|                                    
 | Haorong Liang 👩‍🚀 | ETL: data pipeline                |                                    |
 | Yunchi  Zhao  🐱‍👤 | Model Training                    |                                    |
-| Ziyan   Zhao  🤠 | Deployment                        |                                    |
-| Tianqi  Xia   🏂 | Monitor                           |                                    |
+| Ziyan   Zhao  🤠 | Model Serving & Monitoring        |                                    |
+| Tianqi  Xia   🏂 | Monitoring & Continous X pipeline |                                    |
 
 
 
