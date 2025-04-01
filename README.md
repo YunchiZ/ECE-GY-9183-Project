@@ -1,5 +1,6 @@
 
-## Title of project
+## MLops: Info Lens 👓 - Automatic News Classification, Content Summary, True and False Identification
+ 
 
 <!-- 
 Discuss: Value proposition: Your will propose a machine learning system that can be 
