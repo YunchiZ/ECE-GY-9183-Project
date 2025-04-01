@@ -72,7 +72,7 @@ diagram, (3) justification for your strategy, (4) relate back to lecture materia
 
 <!-- Make sure to clarify how you will satisfy the Unit 4 and Unit 5 requirements, 
 and which optional "difficulty" points you are attempting. -->
-Our aim to build and optimize large-scale models for three natural language processing (NLP) tasks:
+We aim to build and optimize large-scale models for three natural language processing (NLP) tasks:
 
 + Text Summarization: Generating summaries for long articles.
 + Text Classification: Categorizing news articles into predefined categories (e.g., politics, sports, health).
@@ -91,7 +91,6 @@ For each task, we will select appropriate pre-trained models, fine-tune them, an
         model_name = "facebook/bart-large-cnn" 
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-
         ```
         - Processing of input text: Before entering the text into the BART model, the text needs to be tokenized. A Hugging Face's word tokenizer automatically converts the text into a format the model can understand.
 
