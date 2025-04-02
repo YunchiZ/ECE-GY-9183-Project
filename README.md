@@ -25,7 +25,7 @@ link to their contributions in all repos here. -->
 | Name             | Responsible for                   | Link to their commits in this repo               |
 |------------------|-----------------------------------|--------------------------------------------------|
 | Team: Coconut 🥥 | Project Proposal & Report |https://github.com/YunchiZ/ECE-GY-9183-Project.git|                                    
-| Haorong Liang 👩‍🚀 | ETL: Data Pipeline                |                                    |
+| Haorong Liang 👩‍🚀 | ETL: Data Pipeline                |https://github.com/YunchiZ/ECE-GY-9183-Project/commits/main/?author=Haorong0726|
 | Yunchi  Zhao  🐱‍👤 | Model Training                    |https://github.com/YunchiZ/ECE-GY-9183-Project/commits/main/?author=YunchiZ|
 | Ziyan   Zhao  🤠 | Model Serving & Monitoring        |https://github.com/YunchiZ/ECE-GY-9183-Project/commits/main/?author=ArcusNYU|
 | Tianqi  Xia   🏂 | Monitor & Continous X Pipeline |                                    |
@@ -273,6 +273,43 @@ and which optional "difficulty" points you are attempting. -->
 
 <!-- Make sure to clarify how you will satisfy the Unit 8 requirements,  and which 
 optional "difficulty" points you are attempting. -->
+
+We design a modular and scalable data pipeline to support three tasks in our system across both offline training and online inference stages. 
+The pipeline integrates persistent storage, structured logging (via SQLite), batch ETL processes, and online feedback handling.
+
+1. Persistent Storage
+   We mount persistent volumes on Chameleon to store long-lived information.
+   The data volume layout is shown as follows:
+   
+   /mnt/data/ # General data storage (utilized by ETL and online service modules)
+   ├── original/ # Raw Kaggle data
+   │   └── dataset.csv
+   |
+   ├── etl_output/ # Cleaned train/dev/test splits
+   │   ├── train.jsonl
+   │   ├── dev.jsonl
+   │   └── test.jsonl
+   |
+   ├── production_data/
+   │ └── logs.sqlite # Online inference logs (SQLite DB)
+   |
+   └── lock_state/
+     └── lock.json # Retrain coordination lock
+
+   /mnt/train-data/ # A dedicated data volume for the model training container (shared by the train/deploy containers)
+   ├── data/                            ← copy version of etl_output (For training)
+   │   ├── train.jsonl
+   │   ├── dev.jsonl
+   │   └── test.jsonl
+   │
+   ├── models/                          
+   │   ├── BERT-0.pth # The stored model after each training         
+   │   ├── model_status.json # Record the current state of model：serving / candidate / abandon
+   │   ├── training_record.json # Record the metrics like hyper-parameter, loss, accuracy for each epoch
+   │   └── off_evaluation.json # Record the offline evaluation result
+
+
+
 
 #### Continuous X
 
