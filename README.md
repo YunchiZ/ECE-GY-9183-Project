@@ -1,6 +1,6 @@
-## MLops: Info Lens 👓 - Automatic News Classification, Content Summary, True and False Identification
+# MLops: Info Lens 👓 - Automatic News Classification, Content Summary, True and False Identification
 
-### 1.Value Proposition
+## 1.Value Proposition
 A cloud-deployed machine learning operation system that are designed for automatic and quick-response news content extraction. 
 
 The system is aimed at benefiting any user or professional journalist who wants to process news information efficiently through 3 functions:
@@ -14,7 +14,7 @@ The overall system is judged by the following **business** metric:
 - Feedback from users: average satisfaction per batch(for content summary); average accuracy per batch(for identification & classification)
 - System: response error rate, average inference delay, resource utilization
 
-### 2.Contributors
+## 2.Contributors
 
 | Name             | Responsible for                   | Link to their commits in this repo               |
 |------------------|-----------------------------------|--------------------------------------------------|
@@ -25,7 +25,7 @@ The overall system is judged by the following **business** metric:
 | Tianqi  Xia   🏂 | Monitor & Continous X Pipeline |                                    |
 
 
-### 3.System diagram
+## 3.System diagram
 
 <!-- Overall digram of system. Doesn't need polish, does need to show all the pieces. 
 Must include: all the hardware, all the containers/software platforms, all the models, 
@@ -34,7 +34,7 @@ all the data. -->
 ![Project Diagram](diagram.png)
 
 
-### 4.Summary of outside materials
+## 4.Summary of outside materials
 
 <!-- In a table, a row for each dataset, foundation model. 
 Name of data/model, conditions under which it was created (ideally with links/references), 
@@ -48,7 +48,7 @@ conditions under which it may be used. -->
 | etc          |                    |                   |
 
 
-### Summary of infrastructure requirements
+## Summary of infrastructure requirements
 
 <!-- Itemize all your anticipated requirements: What (`m1.medium` VM, `gpu_mi100`), 
 how much/when, justification. Include compute, floating IPs, persistent storage. 
@@ -61,13 +61,13 @@ The table below shows an example, it is not a recommendation. -->
 | Floating IPs    | 1 for entire project duration, 1 for sporadic use |               |
 | etc             |                                                   |               |
 
-### Detailed design plan
+## Detailed design plan
 
 <!-- In each section, you should describe (1) your strategy, (2) the relevant parts of the 
 diagram, (3) justification for your strategy, (4) relate back to lecture material, 
 (5) include specific numbers. -->
 
-#### Model training and training platforms
+### Model training and training platforms
 
 <!-- Make sure to clarify how you will satisfy the Unit 4 and Unit 5 requirements, 
 and which optional "difficulty" points you are attempting. -->
@@ -259,12 +259,12 @@ For each task, we will select appropriate pre-trained models, fine-tune them, an
     )
     ```
 
-#### Model serving and monitoring platforms
+### Model serving and monitoring platforms
 
 <!-- Make sure to clarify how you will satisfy the Unit 6 and Unit 7 requirements, 
 and which optional "difficulty" points you are attempting. -->
 
-#### Data pipeline
+### Data pipeline
 
 <!-- Make sure to clarify how you will satisfy the Unit 8 requirements,  and which 
 optional "difficulty" points you are attempting. -->
@@ -272,12 +272,13 @@ optional "difficulty" points you are attempting. -->
 We design a modular and scalable data pipeline to support three tasks in our system across both offline training and online inference stages. 
 The pipeline integrates persistent storage, structured logging (via SQLite), batch ETL processes, and online feedback handling.
 
-##### 1. Persistent Storage
+#### 1. Persistent Storage
+
    
    We mount persistent volumes on Chameleon to store long-lived information. The data volume layout is shown as follows:
-   
+      
    ```
-   /mnt/data/ # General data storage (utilized by ETL and online service modules)
+   /mnt/monitor-data/ # General data storage (utilized by ETL and online service modules)
    ├── original/         # Raw Kaggle data
    │   └── dataset.csv
    |
@@ -308,7 +309,7 @@ The pipeline integrates persistent storage, structured logging (via SQLite), bat
    │   └── off_evaluation.json    # Record the offline evaluation result
    ```
 
-##### 2. Offline Data
+#### 2. Offline Data
    
    We use **Kaggle News Category Datasheet** as the original datasheet.
 
@@ -322,7 +323,7 @@ The pipeline integrates persistent storage, structured logging (via SQLite), bat
 
    The processsed data is save to `/mnt/data/etl_output/` and synced to `/mnt/train-data/data/` for training.
 
-##### 3. ETL Data Pipeline
+#### 3. ETL Data Pipeline
 
    The data pipeline is structured into the following components:
 
@@ -347,10 +348,47 @@ The pipeline integrates persistent storage, structured logging (via SQLite), bat
      /mnt/data/etl_output/test.jsonl
      ```
    - Generate dataset metadata: The script produces a metadata file describing the dataset structure, stored as: `/mnt/data/etl_output/database.json`
-     
 
-   
-#### Continuous X
+#### Online Data
+
+   To emulate real-time usage of our deployed service, we implement an online data pipeline that simulates user behavior and continuously generates inference requests. The simulated data is generated based on the following characterisrtics:
+   - Input format: Each data point consists of a single short news description, tipically 15-50 words, without any labels.
+   - Topical Diversity: The simulated inputs are sampled across different categories to simulate the broad distribution of user interests.
+   - User Tracking: Each request is tagged with a psedo UserID to allow simulation of per-user performance analysis and long-term feedback tracking.
+   - Request Frequency: The simulator send the request every 1-3 seconds, to simulate the low to medium traffic production load.
+
+     
+The path is shown as follows:
+   ```
+   simulation/
+   ├── simulate_online_stream.py
+   ```
+
+   Each request is sent to the deployed model API and the input/output is logged in a shared SQLite database at: `/mnt/data/production_data/logs.sqlite`
+   This database stores structured online inference logs, which include:
+   - Input content (e.g., news description)
+   - Predicted outputs (summary, category, fake news status)
+   - Model version
+   - Timestamps and latency
+     
+   These records are:
+   - Queried by the monitor container for analysis and drift detection
+   - Used by the retraining pipeline to extract fresh data for model updates
+   - Visualized via dashboards for team insight
+     
+Using SQLite ensures efficient high-frequency writes, structured queries, and lightweight integration across all containers.
+
+#### Interactive data dashboard
+
+   We implement a Streamlit dashboard for real-time data insights, pulling data directly from `logs.sqlite`. Dashboard features includes:
+   - Class distribution histogram
+   - Input length distribution
+   - Inference latency trends
+   - Model version usage tracking
+
+The dashboard runs as a dev-side tool, so that we can run the dashboard locally. It refreshes on an interval to read the new data from `logs.sqlite`.
+
+### Continuous X
 
 <!-- Make sure to clarify how you will satisfy the Unit 3 requirements,  and which 
 optional "difficulty" points you are attempting. -->
