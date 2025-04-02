@@ -311,6 +311,18 @@ The pipeline integrates persistent storage, structured logging (via SQLite), bat
    │   └── off_evaluation.json # Record the offline evaluation result
    ```
 
+2. Offline Data
+   We use **Kaggle News Category Datasheet** as the original datasheet.
+
+   `etl.py` is used for pipeline which performs:
+
+   - Cleaning
+   - Normalization
+   - Category Filtering
+   - Train/dev/test Spliting
+   - Export to .jsonl format
+
+   The processsed data is save to `/mnt/data/etl_output/` and synced to `/mnt/train-data/data/` for training.
 
 
 #### Continuous X
