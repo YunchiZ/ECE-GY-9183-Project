@@ -28,7 +28,7 @@ link to their contributions in all repos here. -->
 | Haorong Liang 👩‍🚀 | ETL: Data Pipeline                |                                    |
 | Yunchi  Zhao  🐱‍👤 | Model Training                    |                                    |
 | Ziyan   Zhao  🤠 | Model Serving & Monitoring        |https://github.com/YunchiZ/ECE-GY-9183-Project/tree/deploy|
-| Tianqi  Xia   🏂 | Continous X Pipeline |                                    |
+| Tianqi  Xia   🏂 | Monitor & Continous X Pipeline |                                    |
 
 
 ### System diagram
@@ -36,6 +36,8 @@ link to their contributions in all repos here. -->
 <!-- Overall digram of system. Doesn't need polish, does need to show all the pieces. 
 Must include: all the hardware, all the containers/software platforms, all the models, 
 all the data. -->
+
+
 
 ### Summary of outside materials
 
