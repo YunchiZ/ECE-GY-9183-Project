@@ -16,12 +16,6 @@ The overall system is judged by the following **business** metric:
 
 ### 2.Contributors
 
-<!-- Table of contributors and their roles. 
-First row: define responsibilities that are shared by the team. 
-Then, each row after that is: name of contributor, their role, and in the third column, 
-you will link to their contributions. If your project involves multiple repos, you will 
-link to their contributions in all repos here. -->
-
 | Name             | Responsible for                   | Link to their commits in this repo               |
 |------------------|-----------------------------------|--------------------------------------------------|
 | Team: Coconut 🥥 | Project Proposal & Report |https://github.com/YunchiZ/ECE-GY-9183-Project.git|                                    
@@ -31,15 +25,16 @@ link to their contributions in all repos here. -->
 | Tianqi  Xia   🏂 | Monitor & Continous X Pipeline |                                    |
 
 
-### System diagram
+### 3.System diagram
 
 <!-- Overall digram of system. Doesn't need polish, does need to show all the pieces. 
 Must include: all the hardware, all the containers/software platforms, all the models, 
 all the data. -->
 
+![Project Diagram](diagram.png)
 
 
-### Summary of outside materials
+### 4.Summary of outside materials
 
 <!-- In a table, a row for each dataset, foundation model. 
 Name of data/model, conditions under which it was created (ideally with links/references), 
