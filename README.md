@@ -272,54 +272,84 @@ optional "difficulty" points you are attempting. -->
 We design a modular and scalable data pipeline to support three tasks in our system across both offline training and online inference stages. 
 The pipeline integrates persistent storage, structured logging (via SQLite), batch ETL processes, and online feedback handling.
 
-1. Persistent Storage
+##### 1. Persistent Storage
    
    We mount persistent volumes on Chameleon to store long-lived information. The data volume layout is shown as follows:
    
    ```
    /mnt/data/ # General data storage (utilized by ETL and online service modules)
-   ├── original/ # Raw Kaggle data
+   ├── original/         # Raw Kaggle data
    │   └── dataset.csv
    |
-   ├── etl_output/ # Cleaned train/dev/test splits
+   ├── etl_output/       # Cleaned train/dev/test splits
    │   ├── train.jsonl
-   │   ├── dev.jsonl
+   │   ├── val.jsonl
    │   └── test.jsonl
+   │   └── database.json
    |
    ├── production_data/
-   │ └── logs.sqlite # Online inference logs (SQLite DB)
+   │ └── logs.sqlite     # Online inference logs (SQLite DB)
    |
    └── lock_state/
-     └── lock.json # Retrain coordination lock
+     └── lock.json       # Retrain coordination lock
    ```
    ```
    /mnt/train-data/ # A dedicated data volume for the model training container (shared by the train/deploy containers)
    ├── data/ # copy version of etl_output (For training)
    │   ├── train.jsonl
-   │   ├── dev.jsonl
+   │   ├── val.jsonl
    │   └── test.jsonl
+   │   └── database.json
    │
    ├── models/                          
-   │   ├── BERT-0.pth # The stored model after each training         
-   │   ├── model_status.json # Record the current state of model：serving / candidate / abandon
-   │   ├── training_record.json # Record the metrics like hyper-parameter, loss, accuracy for each epoch
-   │   └── off_evaluation.json # Record the offline evaluation result
+   │   ├── BERT-0.pth             # The stored model after each training         
+   │   ├── model_status.json      # Record the current state of model：serving / candidate / abandon
+   │   ├── training_record.json   # Record the metrics like hyper-parameter, loss, accuracy for each epoch
+   │   └── off_evaluation.json    # Record the offline evaluation result
    ```
 
-2. Offline Data
+##### 2. Offline Data
+   
    We use **Kaggle News Category Datasheet** as the original datasheet.
 
    `etl.py` is used for pipeline which performs:
 
-   - Cleaning
-   - Normalization
-   - Category Filtering
-   - Train/dev/test Spliting
+   - Cleaning (remove empty and abnormal data)
+   - Normalization (lowercasing, punctuation cleanup)
+   - Category Filtering (remove rare classes)
+   - Train/dev/test Spliting 
    - Export to .jsonl format
 
    The processsed data is save to `/mnt/data/etl_output/` and synced to `/mnt/train-data/data/` for training.
 
+##### 3. ETL Data Pipeline
 
+   The data pipeline is structured into the following components:
+
+   ```
+   data_pipeline/
+   ├── extract.py      # Load raw CSV
+   ├── filter.py       # Clean text
+   ├── transform.py    # normalize text
+   ├── split.py        # Create dataset splits
+   ├── load.py         # Save processed data as JSONL
+   └── etl.py          # Main pipeline controller (calls the above modules)
+   ```
+
+   When running `etl.py`：
+
+   - Load raw data: The ETL script reads the original dataset (e.g., from /mnt/data/original/dataset.csv).
+   - Clean and split the data: It performs preprocessing steps such as lowercasing, removing invalid entries, and splitting into train/validation/test sets.
+   - Save preprocessed file: The cleaned and split data is saved in JSONL format as:
+     ```
+     /mnt/data/etl_output/train.jsonl  
+     /mnt/data/etl_output/dev.jsonl  
+     /mnt/data/etl_output/test.jsonl
+     ```
+   - Generate dataset metadata: The script produces a metadata file describing the dataset structure, stored as: `/mnt/data/etl_output/database.json`
+     
+
+   
 #### Continuous X
 
 <!-- Make sure to clarify how you will satisfy the Unit 3 requirements,  and which 
