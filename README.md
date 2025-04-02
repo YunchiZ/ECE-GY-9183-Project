@@ -281,6 +281,7 @@ The pipeline integrates persistent storage, structured logging (via SQLite), bat
    We mount persistent volumes on Chameleon to store long-lived information.
    The data volume layout is shown as follows:
    
+   ```
    /mnt/data/ # General data storage (utilized by ETL and online service modules)
    ├── original/ # Raw Kaggle data
    │   └── dataset.csv
@@ -295,7 +296,8 @@ The pipeline integrates persistent storage, structured logging (via SQLite), bat
    |
    └── lock_state/
      └── lock.json # Retrain coordination lock
-
+   ```
+   ```
    /mnt/train-data/ # A dedicated data volume for the model training container (shared by the train/deploy containers)
    ├── data/                            ← copy version of etl_output (For training)
    │   ├── train.jsonl
@@ -307,7 +309,7 @@ The pipeline integrates persistent storage, structured logging (via SQLite), bat
    │   ├── model_status.json # Record the current state of model：serving / candidate / abandon
    │   ├── training_record.json # Record the metrics like hyper-parameter, loss, accuracy for each epoch
    │   └── off_evaluation.json # Record the offline evaluation result
-
+   ```
 
 
 
