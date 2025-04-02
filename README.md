@@ -278,8 +278,8 @@ We design a modular and scalable data pipeline to support three tasks in our sys
 The pipeline integrates persistent storage, structured logging (via SQLite), batch ETL processes, and online feedback handling.
 
 1. Persistent Storage
-   We mount persistent volumes on Chameleon to store long-lived information.
-   The data volume layout is shown as follows:
+   
+   We mount persistent volumes on Chameleon to store long-lived information. The data volume layout is shown as follows:
    
    ```
    /mnt/data/ # General data storage (utilized by ETL and online service modules)
@@ -299,7 +299,7 @@ The pipeline integrates persistent storage, structured logging (via SQLite), bat
    ```
    ```
    /mnt/train-data/ # A dedicated data volume for the model training container (shared by the train/deploy containers)
-   ├── data/                            ← copy version of etl_output (For training)
+   ├── data/ # copy version of etl_output (For training)
    │   ├── train.jsonl
    │   ├── dev.jsonl
    │   └── test.jsonl
