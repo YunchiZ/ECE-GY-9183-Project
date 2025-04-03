@@ -442,5 +442,3 @@ Each component is packaged as a Docker container with its own codebase branch ma
     -   hardware status
     -   Docker status
     If there are feedback data from the user, it will trigger the retraining process.
-
-
