@@ -10,6 +10,12 @@ The system is aimed at benefiting any user or professional journalist who wants 
 
 The system is **expected** to achieve a total of tens of milliseconds of reasoning time for three functional responses per request, avoiding the high cost of time-consuming and requiring professional processing and verification when compared to traditional non-ML businesses. Besides, the system **will be** host at least dozens of API calls per second, which makes business efficiency significantly higher than traditional services.
 
+Through using the system:
++ The news and media industry can quickly acquire content. Independent content creators can quickly verify the quality of news.
++ Media platform companies can quickly detect and filter out false news and reduce the cost of review.
++ Business enterprises and market research institutions can quickly track industry trends.
++ Application developers can use this API to filter out high-quality news content and build content aggregators.
+
 The overall system is judged by the following **business** metric: 
 - Feedback from users: average satisfaction per batch(for content summary); average accuracy per batch(for identification & classification)
 - System: response error rate, average inference delay, resource utilization
