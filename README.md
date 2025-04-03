@@ -40,12 +40,16 @@ all the data. -->
 Name of data/model, conditions under which it was created (ideally with links/references), 
 conditions under which it may be used. -->
 
-|              | How it was created | Conditions of use |
-|--------------|--------------------|-------------------|
-| Data set 1   |                    |                   |
-| Data set 2   |                    |                   |
-| Base model 1 |                    |                   |
-| etc          |                    |                   |
+| Outside Materials|Name  |Scource | Conditions of use | 
+|--------------|--------------------|-------------------|-----------------|
+| Data set 1   | CNN_Dailymail      |https://huggingface.co/datasets/abisee/cnn_dailymail| For training BART on Content Summary task |
+| Data set 2   | Xsum               |https://huggingface.co/datasets/EdinburghNLP/xsum| For training BART on Content Summary  task |
+| Data set 3   | News Category Dataset |https://www.kaggle.com/datasets/setseries/news-category-dataset | For training DistilBERT on Classification task |
+| Data set 4   | WELFake Dataset |https://www.kaggle.com/datasets/saurabhshahane/fake-news-classification | For training XLNet on Identification task |
+| Model 1 | pre-trained BART   |https://huggingface.co/facebook/bart-large-cnn | Fine-tuned on CNN_Dialymail & Xsum for Content Summary |
+| Model 2 | pre-trained DistilBERT   |https://huggingface.co/distilbert/distilbert-base-uncased | Fine-tuned on News Category Dataset for Classification |
+| Model 3 | XLNet | https://huggingface.co/xlnet/xlnet-base-cased | Fine-tuned on WELFake Dataset for identification |
+
 
 
 ## Ⅴ.Summary of infrastructure requirements
@@ -53,13 +57,12 @@ conditions under which it may be used. -->
 <!-- Itemize all your anticipated requirements: What (`m1.medium` VM, `gpu_mi100`), 
 how much/when, justification. Include compute, floating IPs, persistent storage. 
 The table below shows an example, it is not a recommendation. -->
-
 | Requirement     | How many/when                                     | Justification |
 |-----------------|---------------------------------------------------|---------------|
-| `m1.medium` VMs | 3 for entire project duration                     | ...           |
+| `m1.xlarge` VMs  | 1 for entire project duration                    |a. Running 10 dockers concurrently b. Model training and API on 3 PLMs|
 | `gpu_mi100`     | 4 hour block twice a week                         |               |
-| Floating IPs    | 1 for entire project duration, 1 for sporadic use |               |
-| etc             |                                                   |               |
+| Floating IP | 1 for entire project duration |   |
+| Instance Snapshot | 2~3 for each team member | |
 
 ## Ⅵ.Detailed design plan
 
@@ -177,7 +180,8 @@ For training these large models, especially with large datasets, we will use som
 
     - Fully Sharded Data Parallel: FSDP divides model parameters and optimizes them in parallel across multiple GPUs, helping to minimize memory overhead and improve scalability for models that don’t fit into the memory of a single GPU.
 
-#### 4). Training Time Evaluation: We will conduct experiments to evaluate the effect of distributed training strategies (DDP vs. FSDP) and batch size on training time.
+#### 4). Training Time Evaluation: 
+We will conduct experiments to evaluate the effect of distributed training strategies (DDP vs. FSDP) and batch size on training time.
 
     - Experiment Design: 
         - Single GPU vs. Multiple GPUs: We will measure the training time for a given model with one GPU and compare it to training on multiple GPUs (e.g., 1, 2, 4 GPUs).
@@ -194,7 +198,7 @@ For training these large models, especially with large datasets, we will use som
         - Model Performance: Accuracy, F1 score, and loss for each strategy to ensure that the performance is not sacrificed for speed.
 
 #### 5). Experiment Tracking with MLFlow
-    - We will deploy MLFlow on a Chameleon node and use its logging capabilities to track metrics such as training loss, validation accuracy, model parameters, and other relevant artifacts. MLFlow will provide the ability to track experiments, compare results, and visualize model performance over time.
+We will deploy MLFlow on a Chameleon node and use its logging capabilities to track metrics such as training loss, validation accuracy, model parameters, and other relevant artifacts. MLFlow will provide the ability to track experiments, compare results, and visualize model performance over time.
 
     - Integration with Training Code
     ``` Python
