@@ -14,7 +14,7 @@ Through using the system:
 + The news and media industry can quickly acquire content. Independent content creators can quickly verify the quality of news.
 + Media platform companies can quickly detect and filter out false news and reduce the cost of review.
 + Business enterprises and market research institutions can quickly track industry trends.
-+ Application developers can use this API to filter out high-quality news content and build content aggregators.
++ Application developers can use this API to filter out high-quality news content and to build content aggregators.
 
 The overall system is judged by the following **business** metric: 
 - Feedback from users: average satisfaction per batch(for content summary); average accuracy per batch(for identification & classification)
@@ -311,7 +311,7 @@ The generation of this signal occurs either because the `candidate` model has no
 
 #### 3). Model monitoring
 
-
+The model monitoring function is mainly implemented by the *monitor* container. This container is mainly responsible for reading, analyzing and comparing the database recorded in the deploy data volume, including user input (used for calculating whether there is data shift), model predictions and user feedback (used for calculating the performance metrics of the serving model or candidate model). In the non-deployment stage (`deployment stage` = normal), the monitor docker will notify the ETL docker to conduct a new round of training when there is data shift or the model prediction performance declines beyond the threshold; while in the new model deployment stage (deployment stage = shadow), the monitor docker will compare the performance differences between the new and old models over a period of time to determine whether to officially deploy the new model, and will notify the deploy docker with the result in the form of HTTP.
 
 
 ### 3.Data pipeline (Major: Haorong Liang, Coop: Tianqi Xia - CI)
