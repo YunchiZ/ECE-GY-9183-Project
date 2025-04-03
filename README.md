@@ -20,7 +20,7 @@ The overall system is judged by the following **business** metric:
 |------------------|-----------------------------------|--------------------------------------------------|
 | Team: Coconut 🥥 | Project Proposal & Report |https://github.com/YunchiZ/ECE-GY-9183-Project.git|                                    
 | Haorong Liang 👩‍🚀 | ETL: Data Pipeline                |https://github.com/YunchiZ/ECE-GY-9183-Project/commits/main/?author=Haorong0726|
-| Yunchi  Zhao  🐱‍👤 | Model Training                    |https://github.com/YunchiZ/ECE-GY-9183-Project/commits/main/?author=YunchiZ|
+| Yunchi  Zhao 🥷 | Model Training                    |https://github.com/YunchiZ/ECE-GY-9183-Project/commits/main/?author=YunchiZ|
 | Ziyan   Zhao  🤠 | Model Serving & Monitoring        |https://github.com/YunchiZ/ECE-GY-9183-Project/commits/main/?author=ArcusNYU|
 | Tianqi  Xia   🏂 | Monitoring & Continous X Pipeline |https://github.com/YunchiZ/ECE-GY-9183-Project/commits/main/?author=TimothyXia9|
 
