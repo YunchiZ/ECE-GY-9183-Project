@@ -63,8 +63,8 @@ The table below shows an example, it is not a recommendation. -->
 |`KVM@TACC` instances| 1~4 for entire project duration                   | Environment construction & Docker development test|
 | `compute_gigaio`/`rtx_6000`/     | 1 for any type and 6 hour block twice a week | Early-stage dev. and test. on Train & Deploy dockers|
 |`compute_liqid`/`p100_nvlink`| 1 for any type and 6 hour block twice a week |Middle and final stage project test and validation|
-| Floating IP | 1~4 for entire project duration | IP required for any instance created |
-| Instance Snapshot | 2~3 for each team member | Just private instance images, not important|
+| Floating IPs | 1~4 for entire project duration | IP required for any instance created |
+| Instance Snapshots | 2~3 for each team member | Just private instance images, not important|
 
 ## Ⅵ.Detailed design plan
 
