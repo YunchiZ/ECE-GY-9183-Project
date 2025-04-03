@@ -289,8 +289,18 @@ The deployment status `dployment_stage` mentioned above has three states in the 
 
 #### 2). Model serving - Deployment Management
 
+There is an app.route in the `deploy` docker that is responsible for listening to the `/notify` route on port 8000. This corresponds to the core decision-making thread of deployment management within the container. This thread mainly controls the current model deployment stage based on external signals (from *train* or *deploy* docker) and modifies global variables (including the model name, weights `serving`/`candidate`, and `deployment_stage`). As elaborated above, this determines the specific behavior of the thread when making API calls.
 
+In this project, the deployment management triggered by external signals is designed in accordance with the `CD` process in the MLops convention. Therefore, the following steps occur in chronological order of time:
 
++ **deploy1** from *train* docker:
+Corresponding to the `shadow` stage. Change the `deployment_stage` to `shadow`, and place the *train* container in the new model weights activation of the global variable `candidate` in the train data volume. Subsequently, the program creates an SQLite database in the deploy data volume to record the prediction records of the candidate model, and notifies the monitor container to conduct online evaluation of these records in the form of HTTP.
++ **deploy2** from *monitor* docker:
+Corresponding to the `canary` stage. 
+This stage indicates that the `candidate` model has passed the online evaluation and needs to gradually expand its deployment scale. At this time, the `deployment_stage` needs to be changed to `canary`.
++ **deploy3** from *monitor* docker:
+Corresponding to the `normal` stage.
+The generation of this signal occurs either because the `candidate` model has not surpassed the existing model `serving` in the online evaluation, or because there are significant issues with the `candidate` model in the `canary` stage. At this point, the `deployment_stage` needs to be changed to `normal`, and some variables in the global variables need to be reset.
 
 
 #### 3). Model monitoring
