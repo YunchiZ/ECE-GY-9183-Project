@@ -48,7 +48,7 @@ conditions under which it may be used. -->
 | Data set 4   | WELFake Dataset |https://www.kaggle.com/datasets/saurabhshahane/fake-news-classification | For training XLNet on Identification task |
 | Model 1 | pre-trained BART   |https://huggingface.co/facebook/bart-large-cnn | Fine-tuned on CNN_Dialymail & Xsum for Content Summary |
 | Model 2 | pre-trained DistilBERT   |https://huggingface.co/distilbert/distilbert-base-uncased | Fine-tuned on News Category Dataset for Classification |
-| Model 3 | XLNet | https://huggingface.co/xlnet/xlnet-base-cased | Fine-tuned on WELFake Dataset for identification |
+| Model 3 | pre-trained XLNet | https://huggingface.co/xlnet/xlnet-base-cased | Fine-tuned on WELFake Dataset for identification |
 
 
 
@@ -59,8 +59,8 @@ how much/when, justification. Include compute, floating IPs, persistent storage.
 The table below shows an example, it is not a recommendation. -->
 | Requirement     | How many/when                                     | Justification |
 |-----------------|---------------------------------------------------|---------------|
-| `m1.xlarge` VMs  | 1 for entire project duration                    |a. Running 10 dockers concurrently b. Model training and API on 3 PLMs|
-| `gpu_mi100`     | 4 hour block twice a week                         |               |
+| `m1.xlarge` VMs  | 1 for entire project duration                    |a. Running 10 dockers concurrently b. Model training and API on 3 PLMs c. Model & Dataset Size|
+| `a100`/`rtx_6000`/     | 2 for any type and 4 hour block twice a week |               |
 | Floating IP | 1 for entire project duration |   |
 | Instance Snapshot | 2~3 for each team member | |
 
