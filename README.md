@@ -60,9 +60,11 @@ The table below shows an example, it is not a recommendation. -->
 | Requirement     | How many/when                                     | Justification |
 |-----------------|---------------------------------------------------|---------------|
 | `m1.xlarge` VMs  | 1 for entire project duration                    |a. Running 10 dockers concurrently b. Model training and API on 3 PLMs c. Model & Dataset Size|
-| `a100`/`rtx_6000`/     | 2 for any type and 4 hour block twice a week |               |
-| Floating IP | 1 for entire project duration |   |
-| Instance Snapshot | 2~3 for each team member | |
+|`KVM@TACC` instances| 1~4 for entire project duration                   | Environment construction & Docker development test|
+| `compute_gigaio`/`rtx_6000`/     | 1 for any type and 6 hour block twice a week | Early-stage dev. and test. on Train & Deploy dockers|
+|`compute_liqid`/`p100_nvlink`| 1 for any type and 6 hour block twice a week |Middle and final stage project test and validation|
+| Floating IP | 1~4 for entire project duration | IP required for any instance created |
+| Instance Snapshot | 2~3 for each team member | Just private instance images, not important|
 
 ## Ⅵ.Detailed design plan
 
