@@ -1,4 +1,4 @@
-# MLops: Info Lens 👓 - Automatic News Classification, Content Summary, True and False Identification
+# MLops: Info Lens 👓 - Automatic News Classification, Content Summary, True and Fake Identification
 
 ## Ⅰ.Value Proposition
 A cloud-deployed machine learning operation system that are designed for automatic and quick-response news content extraction. 
