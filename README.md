@@ -418,6 +418,25 @@ The dashboard runs as a dev-side tool, so that we can run the dashboard locally.
 
 <!-- Make sure to clarify how you will satisfy the Unit 3 requirements,  and which 
 optional "difficulty" points you are attempting. -->
+The system uses microservices architecture that containerizes different functions into independent modules.
 
+-   ETL: data extraction, transformation, and loading
+-   Train: Executes model training and validation
+-   Deploy: Model deployment and serving
+-   Monitor: Monitors model performance and data drift
+-   Frontend: User interface for interaction with the system
+-   Other supporting Containers: Services that deploys separately, including MLFlow, Grafana, Prometheus
+
+Each component is packaged as a Docker container with its own codebase branch managed through Git. The deployment is managed with docker compose., which pulls the pre-built container images from Docker Hub and runs them as a coordinated service.
+
+-   Continuous Integration: Whenever a change is made with Git, GitHub Actions automatically builds the Docker images for each service and pushes to Docker Hub, conditionally triggers ETL -> Train -> Deploy -> Monitor sequence.
+
+-   Continuous Deployment: Models are tagged with `serving`, `candidate`, or `abandon` status after offline evaluation. The deploy container checks the model status and updates the serving model accordingly.
+-   Continuous Monitoring: The monitor container tracks
+    -   `serving`, `candidate` models' performances
+    -   data drift
+    -   hardware status
+    -   Docker status
+        If there are feedback data from the user, it will trigger the retraining process.
 
 
