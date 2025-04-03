@@ -46,15 +46,15 @@ all the data. -->
 Name of data/model, conditions under which it was created (ideally with links/references), 
 conditions under which it may be used. -->
 
-| Outside Materials|Name  |Scource | Conditions of use | 
-|--------------|--------------------|-------------------|-----------------|
+| Outside Materials|Name  |Scource | Conditions of use | Details |
+|--------------|--------------------|-------------------|-----------------|-------------------|
 | Data set 1   | CNN_Dailymail      |https://huggingface.co/datasets/abisee/cnn_dailymail| For training BART on Content Summary task |
 | Data set 2   | Xsum               |https://huggingface.co/datasets/EdinburghNLP/xsum| For training BART on Content Summary  task |
 | Data set 3   | News Category Dataset |https://www.kaggle.com/datasets/setseries/news-category-dataset | For training DistilBERT on Classification task |
 | Data set 4   | WELFake Dataset |https://www.kaggle.com/datasets/saurabhshahane/fake-news-classification | For training XLNet on Identification task |
-| Model 1 | pre-trained BART   |https://huggingface.co/facebook/bart-large-cnn | Fine-tuned on CNN_Dialymail & Xsum for Content Summary |
-| Model 2 | pre-trained DistilBERT   |https://huggingface.co/distilbert/distilbert-base-uncased | Fine-tuned on News Category Dataset for Classification |
-| Model 3 | pre-trained XLNet | https://huggingface.co/xlnet/xlnet-base-cased | Fine-tuned on WELFake Dataset for identification |
+| Model 1 | pre-trained BART   |https://huggingface.co/facebook/bart-large-cnn | Fine-tuned on CNN_Dialymail & Xsum for Content Summary | BART model pre-trained on English language, and fine-tuned on CNN Daily Mail. It was introduced in the paper BART: Denoising Sequence-to-Sequence Pre-training for Natural Language Generation, Translation, and Comprehension by Lewis et al. and first released in (https://github.com/pytorch/fairseq/tree/master/examples/bart). |
+| Model 2 | pre-trained DistilBERT   |https://huggingface.co/distilbert/distilbert-base-uncased | Fine-tuned on News Category Dataset for Classification | This model is a distilled version of the BERT base model. It was introduced in Sanh et al. (2019). |
+| Model 3 | pre-trained XLNet | https://huggingface.co/xlnet/xlnet-base-cased | Fine-tuned on WELFake Dataset for identification | XLNet model pre-trained on English language. It was introduced in the paper XLNet: Generalized Autoregressive Pretraining for Language Understanding by Yang et al. |
 
 
 
