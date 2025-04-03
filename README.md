@@ -1,6 +1,6 @@
 # MLops: Info Lens 👓 - Automatic News Classification, Content Summary, True and False Identification
 
-## 1.Value Proposition
+## Ⅰ.Value Proposition
 A cloud-deployed machine learning operation system that are designed for automatic and quick-response news content extraction. 
 
 The system is aimed at benefiting any user or professional journalist who wants to process news information efficiently through 3 functions:
@@ -14,7 +14,7 @@ The overall system is judged by the following **business** metric:
 - Feedback from users: average satisfaction per batch(for content summary); average accuracy per batch(for identification & classification)
 - System: response error rate, average inference delay, resource utilization
 
-## 2.Contributors
+## Ⅱ.Contributors
 
 | Name             | Responsible for                   | Link to their commits in this repo               |
 |------------------|-----------------------------------|--------------------------------------------------|
@@ -25,7 +25,7 @@ The overall system is judged by the following **business** metric:
 | Tianqi  Xia   🏂 | Monitor & Continous X Pipeline |                                    |
 
 
-## 3.System diagram
+## Ⅲ.System diagram
 
 <!-- Overall digram of system. Doesn't need polish, does need to show all the pieces. 
 Must include: all the hardware, all the containers/software platforms, all the models, 
@@ -34,7 +34,7 @@ all the data. -->
 ![Project Diagram](diagram.png)
 
 
-## 4.Summary of outside materials
+## Ⅳ.Summary of outside materials
 
 <!-- In a table, a row for each dataset, foundation model. 
 Name of data/model, conditions under which it was created (ideally with links/references), 
@@ -48,7 +48,7 @@ conditions under which it may be used. -->
 | etc          |                    |                   |
 
 
-## Summary of infrastructure requirements
+## Ⅴ.Summary of infrastructure requirements
 
 <!-- Itemize all your anticipated requirements: What (`m1.medium` VM, `gpu_mi100`), 
 how much/when, justification. Include compute, floating IPs, persistent storage. 
@@ -61,13 +61,13 @@ The table below shows an example, it is not a recommendation. -->
 | Floating IPs    | 1 for entire project duration, 1 for sporadic use |               |
 | etc             |                                                   |               |
 
-## Detailed design plan
+## Ⅵ.Detailed design plan
 
 <!-- In each section, you should describe (1) your strategy, (2) the relevant parts of the 
 diagram, (3) justification for your strategy, (4) relate back to lecture material, 
 (5) include specific numbers. -->
 
-### Model training and training platforms
+### 1.Model training and training platforms
 
 <!-- Make sure to clarify how you will satisfy the Unit 4 and Unit 5 requirements, 
 and which optional "difficulty" points you are attempting. -->
@@ -80,7 +80,7 @@ We aim to build and optimize large-scale models for three natural language proce
 For each task, we will select appropriate pre-trained models, fine-tune them, and evaluate the impact of various training strategies, particularly for large models, using distributed training to optimize training time and resource efficiency.
 
 
-1. Model Selection: 
+#### 1). Model Selection: 
     - Task 1: Summary Generation
         - We plan to use pre-trained BART model provided by Hugging Face. (https://huggingface.co/facebook/bart-large-cnn)
 
@@ -162,7 +162,8 @@ For each task, we will select appropriate pre-trained models, fine-tune them, an
             - per_device_eval_batch_size
             - logging_dir
     
-2. Training Strategies: For training these large models, especially with large datasets, we will use some strategies to ensure both efficiency and scalability. The strategies will address both model fine-tuning and large-scale training jobs that may not fit on a low-end GPU.
+#### 2). Training Strategies: 
+For training these large models, especially with large datasets, we will use some strategies to ensure both efficiency and scalability. The strategies will address both model fine-tuning and large-scale training jobs that may not fit on a low-end GPU.
     - Fine-Tuning with Pre-trained Models: We will fine-tune the models using task-specific data, starting from the pre-trained versions available in Hugging Face’s Transformers library. This approach leverages transfer learning to adapt models to the specific tasks while benefiting from pre-trained weights, which reduces the time and computational cost.
 
     - Batch Size Adjustments: We will explore different batch sizes and evaluate their effect on training time and model performance. We may adjust the batch size based on the GPU memory available.
@@ -171,12 +172,12 @@ For each task, we will select appropriate pre-trained models, fine-tune them, an
 
     - Mixed Precision Training: We will use mixed precision training to speed up training and reduce memory usage. By using 16-bit floating point operations instead of 32-bit, we can significantly reduce training time without compromising model accuracy.
 
-3. Distributed Training
+#### 3). Distributed Training
     - Data Parallelism: We will use Distributed Data Parallel (DDP) for distributed training. DDP works by splitting the dataset across multiple devices, where each GPU processes a subset of the data, and gradients are averaged across all GPUs at each step.
 
     - Fully Sharded Data Parallel: FSDP divides model parameters and optimizes them in parallel across multiple GPUs, helping to minimize memory overhead and improve scalability for models that don’t fit into the memory of a single GPU.
 
-4. Training Time Evaluation: We will conduct experiments to evaluate the effect of distributed training strategies (DDP vs. FSDP) and batch size on training time.
+#### 4). Training Time Evaluation: We will conduct experiments to evaluate the effect of distributed training strategies (DDP vs. FSDP) and batch size on training time.
 
     - Experiment Design: 
         - Single GPU vs. Multiple GPUs: We will measure the training time for a given model with one GPU and compare it to training on multiple GPUs (e.g., 1, 2, 4 GPUs).
@@ -192,7 +193,7 @@ For each task, we will select appropriate pre-trained models, fine-tune them, an
 
         - Model Performance: Accuracy, F1 score, and loss for each strategy to ensure that the performance is not sacrificed for speed.
 
-5. Experiment Tracking with MLFlow
+#### 5). Experiment Tracking with MLFlow
     - We will deploy MLFlow on a Chameleon node and use its logging capabilities to track metrics such as training loss, validation accuracy, model parameters, and other relevant artifacts. MLFlow will provide the ability to track experiments, compare results, and visualize model performance over time.
 
     - Integration with Training Code
@@ -206,7 +207,7 @@ For each task, we will select appropriate pre-trained models, fine-tune them, an
     mlflow.pytorch.log_model(model, "model")
     ```
 
-6. Scheduling Training Jobs with Ray
+#### 6). Scheduling Training Jobs with Ray
 
     - Ray Cluster Setup: We will provision a Ray cluster on Chameleon, which will consist of several nodes (each with one GPU) to handle parallel training jobs.
 
@@ -233,7 +234,7 @@ For each task, we will select appropriate pre-trained models, fine-tune them, an
     trainer.fit()
     ```
 
-7. Hyperparameter Tuning with Ray Tune
+#### 7). Hyperparameter Tuning with Ray Tune
     - Define search space: We will define the search space for hyperparameters such as learning rate, batch size, optimizer type, etc.
 
     - Run tuning jobs: Ray Tune will schedule multiple training jobs with different hyperparameter configurations, evaluating each configuration's performance.
@@ -259,12 +260,12 @@ For each task, we will select appropriate pre-trained models, fine-tune them, an
     )
     ```
 
-### Model serving and monitoring platforms
+### 2.Model serving and monitoring platforms
 
 <!-- Make sure to clarify how you will satisfy the Unit 6 and Unit 7 requirements, 
 and which optional "difficulty" points you are attempting. -->
 
-### Data pipeline
+### 3.Data pipeline
 
 <!-- Make sure to clarify how you will satisfy the Unit 8 requirements,  and which 
 optional "difficulty" points you are attempting. -->
@@ -272,7 +273,7 @@ optional "difficulty" points you are attempting. -->
 We design a modular and scalable data pipeline to support three tasks in our system across both offline training and online inference stages. 
 The pipeline integrates persistent storage, structured logging (via SQLite), batch ETL processes, and online feedback handling.
 
-#### 1. Persistent Storage
+#### 1). Persistent Storage
 
    
    We mount persistent volumes on Chameleon to store long-lived information. The data volume layout is shown as follows:
@@ -309,7 +310,7 @@ The pipeline integrates persistent storage, structured logging (via SQLite), bat
    │   └── off_evaluation.json    # Record the offline evaluation result
    ```
 
-#### 2. Offline Data
+#### 2). Offline Data
    
    We use **Kaggle News Category Datasheet** as the original datasheet.
 
@@ -323,7 +324,7 @@ The pipeline integrates persistent storage, structured logging (via SQLite), bat
 
    The processsed data is save to `/mnt/data/etl_output/` and synced to `/mnt/train-data/data/` for training.
 
-#### 3. ETL Data Pipeline
+#### 3). ETL Data Pipeline
 
    The data pipeline is structured into the following components:
 
@@ -349,7 +350,7 @@ The pipeline integrates persistent storage, structured logging (via SQLite), bat
      ```
    - Generate dataset metadata: The script produces a metadata file describing the dataset structure, stored as: `/mnt/data/etl_output/database.json`
 
-#### Online Data
+#### 4)Online Data
 
    To emulate real-time usage of our deployed service, we implement an online data pipeline that simulates user behavior and continuously generates inference requests. The simulated data is generated based on the following characterisrtics:
    - Input format: Each data point consists of a single short news description, tipically 15-50 words, without any labels.
@@ -378,7 +379,7 @@ The path is shown as follows:
      
 Using SQLite ensures efficient high-frequency writes, structured queries, and lightweight integration across all containers.
 
-#### Interactive data dashboard
+#### 5)Interactive data dashboard
 
    We implement a Streamlit dashboard for real-time data insights, pulling data directly from `logs.sqlite`. Dashboard features includes:
    - Class distribution histogram
@@ -388,7 +389,7 @@ Using SQLite ensures efficient high-frequency writes, structured queries, and li
 
 The dashboard runs as a dev-side tool, so that we can run the dashboard locally. It refreshes on an interval to read the new data from `logs.sqlite`.
 
-### Continuous X
+### 4.Continuous X
 
 <!-- Make sure to clarify how you will satisfy the Unit 3 requirements,  and which 
 optional "difficulty" points you are attempting. -->
