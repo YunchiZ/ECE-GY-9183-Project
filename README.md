@@ -48,10 +48,10 @@ conditions under which it may be used. -->
 
 | Outside Materials|Name  |Scource | Conditions of use | Details |
 |--------------|--------------------|-------------------|-----------------|-------------------|
-| Data set 1   | CNN_Dailymail      |https://huggingface.co/datasets/abisee/cnn_dailymail| For training BART on Content Summary task |
-| Data set 2   | Xsum               |https://huggingface.co/datasets/EdinburghNLP/xsum| For training BART on Content Summary  task |
-| Data set 3   | News Category Dataset |https://www.kaggle.com/datasets/setseries/news-category-dataset | For training DistilBERT on Classification task |
-| Data set 4   | WELFake Dataset |https://www.kaggle.com/datasets/saurabhshahane/fake-news-classification | For training XLNet on Identification task |
+| Data set 1   | CNN_Dailymail      |https://huggingface.co/datasets/abisee/cnn_dailymail| For training BART on Content Summary task |The CNN/DailyMail dataset is a large-scale English news dataset with over 300,000 unique articles from CNN and the Daily Mail.It now supports both extractive and abstractive summarization. |
+| Data set 2   | Xsum               |https://huggingface.co/datasets/EdinburghNLP/xsum| For training BART on Content Summary  task |The XSum dataset consists of BBC news articles paired with one-sentence summaries. Each sample includes the full article (document), a concise summary (summary), and a unique BBC article ID (id). It was designed to support tasks like abstractive summarization.
+| Data set 3   | News Category Dataset |https://www.kaggle.com/datasets/setseries/news-category-dataset | For training DistilBERT on Classification task |The HuffPost dataset includes around 210k news headlines from 2012 to 2022, covering 42 categories. It provides headlines, short descriptions, authors, and publication dates, and is widely used for text classification and summarization tasks. |
+| Data set 4   | WELFake Dataset |https://www.kaggle.com/datasets/saurabhshahane/fake-news-classification | For training XLNet on Identification task |The WELFake dataset contains 72,134 news articles, evenly split between real and fake news. It combines data from four sources to improve model training and reduce overfitting. Each entry includes a title, full text, and a binary label indicating authenticity.
 | Model 1 | pre-trained BART   |https://huggingface.co/facebook/bart-large-cnn | Fine-tuned on CNN_Dialymail & Xsum for Content Summary | BART model pre-trained on English language, and fine-tuned on CNN Daily Mail. It was introduced in the paper BART: Denoising Sequence-to-Sequence Pre-training for Natural Language Generation, Translation, and Comprehension by Lewis et al. and first released in (https://github.com/pytorch/fairseq/tree/master/examples/bart). |
 | Model 2 | pre-trained DistilBERT   |https://huggingface.co/distilbert/distilbert-base-uncased | Fine-tuned on News Category Dataset for Classification | This model is a distilled version of the BERT base model. It was introduced in Sanh et al. (2019). |
 | Model 3 | pre-trained XLNet | https://huggingface.co/xlnet/xlnet-base-cased | Fine-tuned on WELFake Dataset for identification | XLNet model pre-trained on English language. It was introduced in the paper XLNet: Generalized Autoregressive Pretraining for Language Understanding by Yang et al. |
@@ -340,9 +340,7 @@ The pipeline integrates persistent storage, structured logging (via SQLite), bat
    |
    ├── production_data/
    │ └── logs.sqlite     # Online inference logs (SQLite DB)
-   |
-   └── lock_state/
-     └── lock.json       # Retrain coordination lock
+
    ```
    ```
    /mnt/train-data/ # A dedicated data volume for the model training container (shared by the train/deploy containers)
@@ -430,13 +428,13 @@ Using SQLite ensures efficient high-frequency writes, structured queries, and li
 
 #### 5)Interactive data dashboard
 
-   We implement a Streamlit dashboard for real-time data insights, pulling data directly from `logs.sqlite`. Dashboard features includes:
+   We implement a Streamlit dashboard for real-time data insights. Dashboard features includes:
    - Class distribution histogram
    - Input length distribution
    - Inference latency trends
    - Model version usage tracking
 
-The dashboard runs as a dev-side tool, so that we can run the dashboard locally. It refreshes on an interval to read the new data from `logs.sqlite`.
+The dashboard runs as a grafana docker, so that we can run the dashboard locally. It refreshes on an interval to read the new data from `logs.sqlite`.
 
 ### 4.Continuous X Pipeline (Tianqi Xia)
 
