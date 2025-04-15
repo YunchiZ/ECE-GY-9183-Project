@@ -12,4 +12,10 @@ classification/wandb
 classification/results
 
 
+
+# fake news
+fake/dataset
+fake/model
+
+
 .DS_Store
