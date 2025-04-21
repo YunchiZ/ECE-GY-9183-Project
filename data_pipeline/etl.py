@@ -41,7 +41,7 @@ def run_etl_summary(output_dir):
 
 if __name__ == "__main__":
 
-    run_etl_classification("classification")
-    run_etl_welfake("welfake")
-    run_etl_summary("summary")
+    run_etl_classification("output/classification")
+    run_etl_welfake("output/welfake")
+    run_etl_summary("output/summary")
     
