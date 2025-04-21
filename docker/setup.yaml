@@ -7,7 +7,7 @@ services:
       - "8000:8000"  
     volumes:
       - /mnt/vdb/raw_data:/app/raw_data   # allow container read data from local
-      - ./output:/app/output
+      - /mnt/vdb/output:/app/output
     environment:
       - ETL_MODE=prod
     command: >
