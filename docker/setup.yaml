@@ -1,0 +1,14 @@
+version: '3.9'
+services:
+  etl:
+    build: .
+    container_name: etl
+    ports:
+      - "8000:8000"  
+    volumes:
+      - /mnt/vdb/raw_data:/app/raw_data   # allow container read data from local
+      - ./output:/app/output
+    environment:
+      - ETL_MODE=prod
+    command: >
+      bash -c "python3 etl.py"
