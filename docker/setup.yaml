@@ -1,8 +1,7 @@
 version: '3.9'
 services:
   etl:
-    build: docker
-    dockerfile: etl-dockerfile
+    build: ./docker
     container_name: etl
     ports:
       - "8000:8000"  
