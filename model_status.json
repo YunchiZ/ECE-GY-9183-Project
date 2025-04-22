@@ -1,0 +1,14 @@
+{
+    "0": [
+      {"model": "BART-v0",  "status": "serving"},
+      {"model": "BART-v1",  "status": "candidate"}
+    ],
+    "1": [
+      {"model": "BERT-v0",   "status": "serving"},
+      {"model": "BERT-v1",   "status": "candidate"}
+    ],
+    "2": [
+      {"model": "XLN-v0",   "status": "serving"},
+      {"model": "XLN-v1",   "status": "candidate"}
+    ]
+}

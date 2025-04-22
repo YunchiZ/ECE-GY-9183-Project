@@ -1,0 +1,4 @@
+{
+    "DistilBert-v1": "serving",
+    "DistilBert-v2": "candidate"
+}
