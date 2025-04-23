@@ -13,8 +13,9 @@ import torch
 import subprocess
 from pathlib import Path
 import json
-import portalocker
-import tempfile
+from filelock import FileLock
+import pytest
+import subprocess
 
 max_input_length = 1024
 max_target_length = 128
@@ -166,74 +167,7 @@ def train_fn(config, model, train_dataset, eval_dataset):
 
 
 
-def evaluate_testset(test_data, model, tokenizer):
-    """
-    评估测试集并返回 ROUGE 指标
-    Args:
-        test_data (Dataset): 预处理后的测试数据集（需包含 "article" 和 "highlights"）
-        model (PreTrainedModel): 加载的最佳模型
-        tokenizer (PreTrainedTokenizer): 对应的 tokenizer
-    Returns:
-        dict: ROUGE 指标结果
-    """
-    try:
-        # 将模型移动到 GPU（如果可用）
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = model.to(device)
-        
-        # 存储预测和真实摘要
-        pred_summaries = []
-        true_summaries = []
-        
-        # 批量生成预测
-        batch_size = 8  # 根据 GPU 显存调整
-        for i in range(0, len(test_data), batch_size):
-            batch = test_data.select(range(i, min(i+batch_size, len(test_data))))
-            
-            # 编码输入文本
-            inputs = tokenizer(
-                batch["article"],
-                max_length=1024,
-                truncation=True,
-                padding="max_length",
-                return_tensors="pt"
-            ).to(device)
-            
-            # 生成摘要
-            with torch.no_grad():
-                summaries = model.generate(
-                    input_ids=inputs["input_ids"],
-                    attention_mask=inputs["attention_mask"],
-                    **gen_kwargs
-                )
-            
-            # 解码预测和真实摘要
-            decoded_preds = tokenizer.batch_decode(summaries, skip_special_tokens=True)
-            decoded_labels = [highlight for highlight in batch["highlights"]]
-            
-            pred_summaries.extend(decoded_preds)
-            true_summaries.extend(decoded_labels)
-            
-            print(f"Processed {i + batch_size}/{len(test_data)} samples")
-            
-        # 计算 ROUGE 指标
-        rouge = evaluate.load("rouge")
-        results = rouge.compute(
-            predictions=pred_summaries,
-            references=true_summaries,
-            use_stemmer=True
-        )
-        
-        # 格式化结果（保留4位小数）
-        return {
-            "rouge1": round(results["rouge1"], 4),
-            "rouge2": round(results["rouge2"], 4),
-            "rougeL": round(results["rougeL"], 4),
-        }
-    
-    except Exception as e:
-        print(f"评估过程中发生错误: {str(e)}")
-        raise
+
         
 def get_next_model_version(base_dir="model"):
     base_path = Path(base_dir)
@@ -249,57 +183,42 @@ def get_next_model_version(base_dir="model"):
 
 
 
-def update_model_status(new_model, new_scores):
+def update_model_status(new_model_name):
+    task_id = "0"
+    
     status_path = Path("model_status.json")
+    lock_path = status_path.with_suffix(".lock")
+    lock = FileLock(str(lock_path))
+    
     model_status = {}
-    
-    # 读取现有文件
-    if status_path.exists():
-        try:
-            with open(status_path, 'r') as f:
-                model_status = json.load(f)
-        except json.JSONDecodeError:
+
+    # 使用 portalocker 锁定文件读写
+    with lock:
+        if status_path.exists():
+            with status_path.open("r") as f:
+                try:
+                    model_status = json.load(f)
+                except json.JSONDecodeError:
+                    model_status = {}
+        else:
             model_status = {}
-    
-    model_status[new_model] = "candidate"
-    serving_name = next((k for k, v in model_status.items() if v == "serving"), None)
-    
-    if serving_name:
-        serving_path = f"model/{serving_name}"
-        serving_model = BartForConditionalGeneration.from_pretrained(serving_path)
-        
-        print(serving_model)
-        test_size = 200  # Same for evaluation dataset
-        test_dataset = tokenized_datasets["test"].select(range(test_size))
-        results = evaluate_testset(test_dataset, serving_model, tokenizer)
-        
-        print("\n测试集评估结果:")
-        print(f"ROUGE-1: {results['rouge1']}")
-        print(f"ROUGE-2: {results['rouge2']}")
-        print(f"ROUGE-L: {results['rougeL']}")
-        print(f"old rouge: {results['rougeL']:.4f}")
-    
-        if new_scores >= results['rougeL']:
-            model_status[new_model] = "serving"
-            model_status[serving_name] = "candidate"
-    else:
-        # 如果没有serving模型，将新模型设为serving
-        model_status[new_model] = "serving"
-    
-    # 创建临时文件并写入
-    fd, temp_path = tempfile.mkstemp(prefix='model_status_', dir=status_path.parent)
-    try:
-        with os.fdopen(fd, 'w') as f:
+
+        if task_id not in model_status:
+            model_status[task_id] = []
+
+        task_models = model_status[task_id]
+        # 移除已有相同名字的模型
+        task_models = [m for m in task_models if m["model"] != new_model_name]
+
+        # 加入新模型
+        task_models.append({
+            "model": new_model_name,
+            "status": "candidate"
+        })
+        model_status[task_id] = task_models
+
+        with status_path.open("w") as f:
             json.dump(model_status, f, indent=4)
-        
-        # 原子性地替换原文件
-        os.replace(temp_path, status_path)
-        return True
-    except Exception as e:
-        print(f"写入文件时发生错误: {e}")
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)  # 删除临时文件
-        return False
 
 
 if __name__ == '__main__':
@@ -381,40 +300,14 @@ if __name__ == '__main__':
     from transformers import AutoModel
     best_model = BartForConditionalGeneration.from_pretrained(best_checkpoint_dir)
 
-    gen_kwargs = {
-        "max_length": 128,          # 生成摘要的最大长度
-        "min_length": 30,           # 生成摘要的最小长度
-        "num_beams": 4,             # Beam Search 的 beam 数
-        "length_penalty": 2.0,      # 长度惩罚系数（>1鼓励更长，<1鼓励更短）
-        "no_repeat_ngram_size": 3,  # 禁止重复的 n-gram 大小
-        "early_stopping": True,     # 是否提前停止生成
-    }
-
-    try:
-    
-    # 执行评估
-        results = evaluate_testset(test_dataset, best_model, tokenizer)
-        
-        # 打印结果
-        print("\n测试集评估结果:")
-        print(f"ROUGE-1: {results['rouge1']}")
-        print(f"ROUGE-2: {results['rouge2']}")
-        print(f"ROUGE-L: {results['rougeL']}")
-
-    except KeyError as e:
-        print(f"数据加载错误: 请检查数据集是否包含 'article' 和 'highlights' 字段 - {str(e)}")
-    except FileNotFoundError as e:
-        print(f"模型加载错误: 检查点路径 {best_checkpoint_dir} 不存在 - {str(e)}")
-    except Exception as e:
-        print(f"未知错误: {str(e)}")
-
+    best_model.save_pretrained("tmp/latest_model")
+    torch.save(test_dataset, "tmp/test_dataset.pt")
+    retcode = subprocess.call(["pytest", "-v", "-s", "test_model_eval.py"])
+    if retcode != 0:
+        print("test failed")
+    else:
+        model_name, save_path = get_next_model_version()
+        best_model.save_pretrained(save_path)
+        print(f"new model: {model_name} + {save_path}")
+        update_model_status(model_name)
     wandb.finish()
-
-
-
-    model_name, save_path = get_next_model_version()
-
-    best_model.save_pretrained(save_path)
-    
-    print(f"new model: {model_name} + {save_path}")
-    update_model_status(model_name, results['rougeL'])

@@ -118,46 +118,6 @@ def get_next_model_version(base_dir="model"):
     return f"BERT-v{next_version}", base_path / f"BERT-v{next_version}"
 
 
-def update_model_status(new_model, new_scores):
-    status_path = Path("model_status.json")
-    model_status = {}
-
-    # 使用 portalocker 锁定文件读写
-    with portalocker.Lock(status_path, timeout=10, mode="a+") as f:
-        f.seek(0)
-        try:
-            model_status = json.load(f)
-        except json.JSONDecodeError:
-            model_status = {}
-
-        model_status[new_model] = "candidate"
-
-        serving_name = next((k for k, v in model_status.items() if v == "serving"), None)
-        serving_path = f"model/{serving_name}"
-        serving_model = DistilBertForSequenceClassification.from_pretrained(serving_path)
-        
-        print(serving_model)
-
-        trainer = Trainer(
-            model=serving_model,
-            args=TrainingArguments(output_dir="./tmp"),  # 临时目录，仅用于预测
-        )
-        
-        predictions = trainer.predict(test_dataset)
-        predictions_logits = predictions.predictions
-        predicted_labels = np.argmax(predictions_logits, axis=1)
-        
-        accuracy = accuracy_score(test_labels_encoded, predicted_labels)
-        print(f"old Accuracy: {accuracy:.4f}")
-
-        if new_scores >= accuracy:
-            model_status[new_model] = "serving"
-            model_status[serving_name] = "candidate"
-
-        f.seek(0)
-        f.truncate()
-        json.dump(model_status, f, indent=4)
-
 def update_model_status(new_model_name):
     task_id = "1"
     
