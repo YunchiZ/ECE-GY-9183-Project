@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  etl:
+    image: python:3.10-slim
+    container_name: etl
+    command: tail -f /dev/null  # 模拟运行状态，可换成实际 ETL 脚本
+    volumes:
+      - ./etl:/app
+    working_dir: /app
+    networks:
+      - mlnet
+
+  train:
+    build: ./train
+    container_name: train
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./train:/app
+    networks:
+      - mlnet
+    depends_on:
+      - deploy
+
+  deploy:
+    build: ./deploy
+    container_name: deploy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./deploy:/app
+    networks:
+      - mlnet
+
+networks:
+  mlnet:
+    driver: bridge
