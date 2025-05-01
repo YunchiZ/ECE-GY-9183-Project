@@ -1,5 +1,5 @@
 # 基础镜像：包含 Python + pip
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 # 安装依赖用的工具
 RUN apt-get update && apt-get install -y git
@@ -16,4 +16,4 @@ RUN pip install -r requirements.txt
 
 
 EXPOSE 8000
-CMD ["python", "train.py"]
+CMD ["python", "train_app.py"]

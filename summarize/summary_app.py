@@ -4,9 +4,10 @@ import evaluate
 import numpy as np
 import wandb
 import datasets
+import os
+os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1"
 from ray import tune
 import ray
-import os
 from ray.air import session
 from sklearn.metrics import accuracy_score, f1_score
 import torch
@@ -16,6 +17,8 @@ import json
 from filelock import FileLock
 import pytest
 import subprocess
+from datetime import datetime
+
 
 max_input_length = 1024
 max_target_length = 128
@@ -95,7 +98,15 @@ def compute_metrics(eval_pred):
 
 
 
-def train_fn(config, model, train_dataset, eval_dataset):
+def train_fn(config, model, train_dataset, eval_dataset, run_name):
+    trial_id = session.get_trial_name()
+    wandb.init(
+        project="Mlops-summary",
+        entity="yunchiz-new-york-university",
+        name=f"{run_name}_{trial_id}",
+        group=run_name,  # 所有 trial 同组
+        reinit=True
+    )
     try:
         trial_dir = session.get_trial_dir()  # 例如：~/ray_results/test/trial_xxx/
         output_dir = os.path.join(trial_dir, "results")
@@ -105,9 +116,9 @@ def train_fn(config, model, train_dataset, eval_dataset):
 
 
     training_args = TrainingArguments(
-        run_name = "ray_test_epoch_2",
+        run_name=None,
         output_dir=output_dir,
-        num_train_epochs=2,  
+        num_train_epochs=1,  
         
         # per_device_train_batch_size=config["batch_size"],  # Hyperparameter from Ray Tune
         # per_device_eval_batch_size=config["batch_size"],   # Hyperparameter from Ray Tune
@@ -159,6 +170,12 @@ def train_fn(config, model, train_dataset, eval_dataset):
             metrics=eval_results,
             checkpoint=tune.Checkpoint.from_directory(output_dir)  # 将模型目录作为检查点
         )
+        wandb.log({
+            "trial_learning_rate": config["learning_rate"],
+            "rouge1": eval_results["eval_rouge1"],
+            "rouge2": eval_results["eval_rouge2"],
+            "rougeL": eval_results["eval_rougeL"],
+        })
     except Exception as e:
         print(f"报告错误: {str(e)}")
         raise
@@ -186,7 +203,10 @@ def get_next_model_version(base_dir="model"):
 def update_model_status(new_model_name):
     task_id = "0"
     
-    status_path = Path("model_status.json")
+    current_dir = Path(__file__).resolve().parent
+    parent_dir = current_dir.parent
+    status_path = parent_dir / "model_status.json"
+    
     lock_path = status_path.with_suffix(".lock")
     lock = FileLock(str(lock_path))
     
@@ -219,6 +239,15 @@ def update_model_status(new_model_name):
 
         with status_path.open("w") as f:
             json.dump(model_status, f, indent=4)
+
+def evaluate_offline():
+    retcode = pytest.main([
+        "tests",           # 只扫描 tests/
+        "--disable-warnings",
+        "-v",                 # (可选) verbose，显示详细每个测试
+        "-s"                  # (可选) 允许 print() 打印到控制台
+    ])
+    return retcode
 
 
 if __name__ == '__main__':
@@ -265,15 +294,19 @@ if __name__ == '__main__':
         # "learning_rate": tune.grid_search([1e-5, 2e-5, 5e-5]),
         # "batch_size": tune.choice([8, 16]),
         # "warmup_steps": tune.choice([500, 1000, 2000]),
-        "learning_rate": tune.grid_search([1e-5]),
+        "learning_rate": tune.grid_search([1e-5, 2e-5]),
     }
 
-    wandb.init(project="Mlops-summary", entity="yunchiz-new-york-university")
+    # wandb.init(project="Mlops-summary", entity="yunchiz-new-york-university")
+    model_name, save_path = get_next_model_version()
+    run_name = f"{model_name}_{datetime.now().strftime('%m%d_%H%M')}"
+    os.environ["WANDB_PROJECT"] = "Mlops-summary"
+    os.environ["WANDB_DISABLED"] = "false"
 
     current_dir = os.getcwd()
     storage_path = f"file://{current_dir}/ray_results"
 
-    train_fn_with_params = tune.with_parameters(train_fn, model=model, train_dataset=train_subset, eval_dataset=eval_subset)
+    train_fn_with_params = tune.with_parameters(train_fn, model=model, train_dataset=train_subset, eval_dataset=eval_subset, run_name = run_name)
     ray.init(ignore_reinit_error=True)  # Initialize Ray
     analysis = tune.run(
         train_fn_with_params,  # The training function that Ray Tune will use
@@ -283,30 +316,27 @@ if __name__ == '__main__':
         num_samples=1,  # Number of trials (hyperparameter combinations)
         verbose=1,  # Verbosity level of Ray Tune
         storage_path=storage_path,
-        name="ray_test_epoch_2",
+        callbacks=[],
     )
 
     test_size = 200  # Same for evaluation dataset
     test_dataset = tokenized_datasets["test"].select(range(test_size))
 
-    best_trial = analysis.get_best_trial(metric="eval_accuracy", mode="max")
+    best_trial = analysis.get_best_trial(metric="eval_rougeL", mode="max")
 
     # 获取检查点路径（通过 checkpoint 属性）
     best_checkpoint = best_trial.checkpoint
     best_checkpoint_dir = best_checkpoint.to_directory()
     print(f"最佳模型路径：{best_checkpoint_dir}")
 
-    # 加载模型
-    from transformers import AutoModel
     best_model = BartForConditionalGeneration.from_pretrained(best_checkpoint_dir)
 
     best_model.save_pretrained("tmp/latest_model")
     torch.save(test_dataset, "tmp/test_dataset.pt")
-    retcode = subprocess.call(["pytest", "-v", "-s", "test_model_eval.py"])
+    retcode = evaluate_offline()
     if retcode != 0:
         print("test failed")
     else:
-        model_name, save_path = get_next_model_version()
         best_model.save_pretrained(save_path)
         print(f"new model: {model_name} + {save_path}")
         update_model_status(model_name)

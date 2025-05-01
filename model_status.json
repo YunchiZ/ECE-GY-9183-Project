@@ -3,9 +3,9 @@
       {"model": "BART-v0",  "status": "serving"}
     ],
     "1": [
-      {"model": "BERT-v0",   "status": "serving"}
+      {"model": "XLN-v0",   "status": "serving"}
     ],
     "2": [
-      {"model": "XLN-v0",   "status": "serving"}
+      {"model": "BERT-v0",   "status": "serving"}
     ]
 }

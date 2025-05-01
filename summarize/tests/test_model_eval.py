@@ -4,13 +4,13 @@ from datasets import load_dataset  # 示例加载
 from transformers import BartForConditionalGeneration, BartTokenizer
 import torch
 
-def test_rouge_score_above_threshold():
+def test_rouge_score_above_threshold(test_dataset, latest_model_path):
     threshold = 0.1
 
-    model = BartForConditionalGeneration.from_pretrained("tmp/latest_model")
+    model = BartForConditionalGeneration.from_pretrained(latest_model_path)
     tokenizer = BartTokenizer.from_pretrained("facebook/bart-base", cache_dir='./model')
     
-    test_dataset = torch.load("tmp/test_dataset.pt")
+    # test_dataset = torch.load("tmp/test_dataset.pt")
 
     rouge = evaluate_model_rouge(test_dataset, model, tokenizer)
 
