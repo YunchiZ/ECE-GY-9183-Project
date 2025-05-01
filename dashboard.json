@@ -1,0 +1,1033 @@
+{
+	"annotations": {
+		"list": [
+			{
+				"builtIn": 1,
+				"datasource": "-- Grafana --",
+				"enable": true,
+				"hide": true,
+				"iconColor": "rgba(0, 211, 255, 1)",
+				"name": "Annotations & Alerts",
+				"type": "dashboard"
+			}
+		]
+	},
+	"editable": true,
+	"gnetId": null,
+	"graphTooltip": 0,
+	"id": 1,
+	"links": [],
+	"panels": [
+		{
+			"collapsed": false,
+			"datasource": null,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 0
+			},
+			"id": 20,
+			"panels": [],
+			"title": "Model Status Overview",
+			"type": "row"
+		},
+		{
+			"datasource": null,
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "thresholds"
+					},
+					"mappings": [
+						{
+							"from": "0",
+							"id": 0,
+							"text": "Normal",
+							"to": "0",
+							"type": 1,
+							"value": "0"
+						},
+						{
+							"from": "1",
+							"id": 1,
+							"text": "Shadow",
+							"to": "1",
+							"type": 1,
+							"value": "1"
+						},
+						{
+							"from": "2",
+							"id": 2,
+							"text": "Canary",
+							"to": "2",
+							"type": 1,
+							"value": "2"
+						}
+					],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							},
+							{
+								"color": "blue",
+								"value": 1
+							},
+							{
+								"color": "orange",
+								"value": 2
+							}
+						]
+					}
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 1
+			},
+			"id": 2,
+			"options": {
+				"colorMode": "value",
+				"graphMode": "area",
+				"justifyMode": "auto",
+				"orientation": "auto",
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"text": {},
+				"textMode": "auto"
+			},
+			"pluginVersion": "7.5.7",
+			"targets": [
+				{
+					"expr": "model_status",
+					"interval": "",
+					"legendFormat": "{{task_type}} - {{model_name}} - {{stage}}",
+					"refId": "A"
+				}
+			],
+			"title": "Model Status",
+			"type": "stat"
+		},
+		{
+			"aliasColors": {},
+			"bars": false,
+			"dashLength": 10,
+			"dashes": false,
+			"datasource": null,
+			"fieldConfig": {
+				"defaults": {},
+				"overrides": []
+			},
+			"fill": 1,
+			"fillGradient": 0,
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 12,
+				"y": 1
+			},
+			"hiddenSeries": false,
+			"id": 4,
+			"legend": {
+				"avg": false,
+				"current": false,
+				"max": false,
+				"min": false,
+				"show": true,
+				"total": false,
+				"values": false
+			},
+			"lines": true,
+			"linewidth": 1,
+			"nullPointMode": "null",
+			"options": {
+				"alertThreshold": true
+			},
+			"percentage": false,
+			"pluginVersion": "7.5.7",
+			"pointradius": 2,
+			"points": false,
+			"renderer": "flot",
+			"seriesOverrides": [],
+			"spaceLength": 10,
+			"stack": false,
+			"steppedLine": false,
+			"targets": [
+				{
+					"expr": "model_metrics",
+					"interval": "",
+					"legendFormat": "{{task_type}} - {{model_name}} - {{model_type}}",
+					"refId": "A"
+				}
+			],
+			"thresholds": [],
+			"timeRegions": [],
+			"title": "Model Performance Metrics",
+			"tooltip": {
+				"shared": true,
+				"sort": 0,
+				"value_type": "individual"
+			},
+			"type": "graph",
+			"xaxis": {
+				"buckets": null,
+				"mode": "time",
+				"name": null,
+				"show": true,
+				"values": []
+			},
+			"yaxes": [
+				{
+					"format": "short",
+					"label": null,
+					"logBase": 1,
+					"max": null,
+					"min": null,
+					"show": true
+				},
+				{
+					"format": "short",
+					"label": null,
+					"logBase": 1,
+					"max": null,
+					"min": null,
+					"show": true
+				}
+			],
+			"yaxis": {
+				"align": false,
+				"alignLevel": null
+			}
+		},
+		{
+			"collapsed": false,
+			"datasource": null,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 9
+			},
+			"id": 22,
+			"panels": [],
+			"title": "Error Metrics",
+			"type": "row"
+		},
+		{
+			"aliasColors": {},
+			"bars": false,
+			"dashLength": 10,
+			"dashes": false,
+			"datasource": null,
+			"fieldConfig": {
+				"defaults": {},
+				"overrides": []
+			},
+			"fill": 1,
+			"fillGradient": 0,
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 10
+			},
+			"hiddenSeries": false,
+			"id": 6,
+			"legend": {
+				"avg": false,
+				"current": false,
+				"max": false,
+				"min": false,
+				"show": true,
+				"total": false,
+				"values": false
+			},
+			"lines": true,
+			"linewidth": 1,
+			"nullPointMode": "null",
+			"options": {
+				"alertThreshold": true
+			},
+			"percentage": false,
+			"pluginVersion": "7.5.7",
+			"pointradius": 2,
+			"points": false,
+			"renderer": "flot",
+			"seriesOverrides": [],
+			"spaceLength": 10,
+			"stack": false,
+			"steppedLine": false,
+			"targets": [
+				{
+					"expr": "error_rate",
+					"interval": "",
+					"legendFormat": "{{task_type}} - {{model_name}} - {{model_type}}",
+					"refId": "A"
+				}
+			],
+			"thresholds": [
+				{
+					"colorMode": "critical",
+					"fill": true,
+					"line": true,
+					"op": "gt",
+					"value": 0.02,
+					"yaxis": "left"
+				}
+			],
+			"timeRegions": [],
+			"title": "Error Rate",
+			"tooltip": {
+				"shared": true,
+				"sort": 0,
+				"value_type": "individual"
+			},
+			"type": "graph",
+			"xaxis": {
+				"buckets": null,
+				"mode": "time",
+				"name": null,
+				"show": true,
+				"values": []
+			},
+			"yaxes": [
+				{
+					"format": "percentunit",
+					"label": null,
+					"logBase": 1,
+					"max": null,
+					"min": null,
+					"show": true
+				},
+				{
+					"format": "short",
+					"label": null,
+					"logBase": 1,
+					"max": null,
+					"min": null,
+					"show": true
+				}
+			],
+			"yaxis": {
+				"align": false,
+				"alignLevel": null
+			}
+		},
+		{
+			"aliasColors": {},
+			"bars": false,
+			"dashLength": 10,
+			"dashes": false,
+			"datasource": null,
+			"fieldConfig": {
+				"defaults": {},
+				"overrides": []
+			},
+			"fill": 1,
+			"fillGradient": 0,
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 12,
+				"y": 10
+			},
+			"hiddenSeries": false,
+			"id": 8,
+			"legend": {
+				"avg": false,
+				"current": false,
+				"max": false,
+				"min": false,
+				"show": true,
+				"total": false,
+				"values": false
+			},
+			"lines": true,
+			"linewidth": 1,
+			"nullPointMode": "null",
+			"options": {
+				"alertThreshold": true
+			},
+			"percentage": false,
+			"pluginVersion": "7.5.7",
+			"pointradius": 2,
+			"points": false,
+			"renderer": "flot",
+			"seriesOverrides": [],
+			"spaceLength": 10,
+			"stack": false,
+			"steppedLine": false,
+			"targets": [
+				{
+					"expr": "data_distribution",
+					"interval": "",
+					"legendFormat": "Task {{task_type}}",
+					"refId": "A"
+				}
+			],
+			"thresholds": [
+				{
+					"colorMode": "critical",
+					"fill": true,
+					"line": true,
+					"op": "gt",
+					"value": 0.5,
+					"yaxis": "left"
+				}
+			],
+			"timeRegions": [],
+			"title": "Data Distribution Shift",
+			"tooltip": {
+				"shared": true,
+				"sort": 0,
+				"value_type": "individual"
+			},
+			"type": "graph",
+			"xaxis": {
+				"buckets": null,
+				"mode": "time",
+				"name": null,
+				"show": true,
+				"values": []
+			},
+			"yaxes": [
+				{
+					"format": "short",
+					"label": null,
+					"logBase": 1,
+					"max": "1",
+					"min": "0",
+					"show": true
+				},
+				{
+					"format": "short",
+					"label": null,
+					"logBase": 1,
+					"max": null,
+					"min": null,
+					"show": true
+				}
+			],
+			"yaxis": {
+				"align": false,
+				"alignLevel": null
+			}
+		},
+		{
+			"collapsed": false,
+			"datasource": null,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 18
+			},
+			"id": 24,
+			"panels": [],
+			"title": "Warning Events",
+			"type": "row"
+		},
+		{
+			"datasource": null,
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisLabel": "",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"lineInterpolation": "linear",
+						"lineWidth": 1,
+						"pointSize": 5,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"spanNulls": true,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "short"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 19
+			},
+			"id": 10,
+			"options": {
+				"legend": {
+					"calcs": [],
+					"displayMode": "list",
+					"placement": "bottom"
+				},
+				"tooltip": {
+					"mode": "single"
+				}
+			},
+			"pluginVersion": "7.5.7",
+			"targets": [
+				{
+					"expr": "sum by(warning_type) (warning_events)",
+					"interval": "",
+					"legendFormat": "{{warning_type}}",
+					"refId": "A"
+				}
+			],
+			"title": "Warning Events by Type",
+			"type": "timeseries"
+		},
+		{
+			"datasource": null,
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisLabel": "",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"lineInterpolation": "linear",
+						"lineWidth": 1,
+						"pointSize": 5,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"spanNulls": true,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "short"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 12,
+				"y": 19
+			},
+			"id": 26,
+			"options": {
+				"legend": {
+					"calcs": [],
+					"displayMode": "list",
+					"placement": "bottom"
+				},
+				"tooltip": {
+					"mode": "single"
+				}
+			},
+			"pluginVersion": "7.5.7",
+			"targets": [
+				{
+					"expr": "sum by(event_type) (deployment_events)",
+					"interval": "",
+					"legendFormat": "{{event_type}}",
+					"refId": "A"
+				}
+			],
+			"title": "Deployment Events",
+			"type": "timeseries"
+		},
+		{
+			"collapsed": false,
+			"datasource": null,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 27
+			},
+			"id": 28,
+			"panels": [],
+			"title": "Container Metrics",
+			"type": "row"
+		},
+		{
+			"datasource": null,
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "thresholds"
+					},
+					"mappings": [
+						{
+							"from": "0",
+							"id": 0,
+							"text": "DOWN",
+							"to": "0",
+							"type": 1,
+							"value": "0"
+						},
+						{
+							"from": "1",
+							"id": 1,
+							"text": "UP",
+							"to": "1",
+							"type": 1,
+							"value": "1"
+						}
+					],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "red",
+								"value": null
+							},
+							{
+								"color": "green",
+								"value": 1
+							}
+						]
+					}
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 28
+			},
+			"id": 12,
+			"options": {
+				"colorMode": "value",
+				"graphMode": "area",
+				"justifyMode": "auto",
+				"orientation": "auto",
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"text": {},
+				"textMode": "auto"
+			},
+			"pluginVersion": "7.5.7",
+			"targets": [
+				{
+					"expr": "container_up",
+					"interval": "",
+					"legendFormat": "{{container}}",
+					"refId": "A"
+				}
+			],
+			"title": "Container Status",
+			"type": "stat"
+		},
+		{
+			"aliasColors": {},
+			"bars": false,
+			"dashLength": 10,
+			"dashes": false,
+			"datasource": null,
+			"fieldConfig": {
+				"defaults": {},
+				"overrides": []
+			},
+			"fill": 1,
+			"fillGradient": 0,
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 12,
+				"y": 28
+			},
+			"hiddenSeries": false,
+			"id": 14,
+			"legend": {
+				"avg": false,
+				"current": false,
+				"max": false,
+				"min": false,
+				"show": true,
+				"total": false,
+				"values": false
+			},
+			"lines": true,
+			"linewidth": 1,
+			"nullPointMode": "null",
+			"options": {
+				"alertThreshold": true
+			},
+			"percentage": false,
+			"pluginVersion": "7.5.7",
+			"pointradius": 2,
+			"points": false,
+			"renderer": "flot",
+			"seriesOverrides": [],
+			"spaceLength": 10,
+			"stack": false,
+			"steppedLine": false,
+			"targets": [
+				{
+					"expr": "container_cpu_usage",
+					"interval": "",
+					"legendFormat": "{{container}} CPU",
+					"refId": "A"
+				}
+			],
+			"thresholds": [],
+			"timeRegions": [],
+			"title": "Container CPU Usage",
+			"tooltip": {
+				"shared": true,
+				"sort": 0,
+				"value_type": "individual"
+			},
+			"type": "graph",
+			"xaxis": {
+				"buckets": null,
+				"mode": "time",
+				"name": null,
+				"show": true,
+				"values": []
+			},
+			"yaxes": [
+				{
+					"format": "percent",
+					"label": null,
+					"logBase": 1,
+					"max": null,
+					"min": null,
+					"show": true
+				},
+				{
+					"format": "short",
+					"label": null,
+					"logBase": 1,
+					"max": null,
+					"min": null,
+					"show": true
+				}
+			],
+			"yaxis": {
+				"align": false,
+				"alignLevel": null
+			}
+		},
+		{
+			"aliasColors": {},
+			"bars": false,
+			"dashLength": 10,
+			"dashes": false,
+			"datasource": null,
+			"fieldConfig": {
+				"defaults": {},
+				"overrides": []
+			},
+			"fill": 1,
+			"fillGradient": 0,
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 36
+			},
+			"hiddenSeries": false,
+			"id": 16,
+			"legend": {
+				"avg": false,
+				"current": false,
+				"max": false,
+				"min": false,
+				"show": true,
+				"total": false,
+				"values": false
+			},
+			"lines": true,
+			"linewidth": 1,
+			"nullPointMode": "null",
+			"options": {
+				"alertThreshold": true
+			},
+			"percentage": false,
+			"pluginVersion": "7.5.7",
+			"pointradius": 2,
+			"points": false,
+			"renderer": "flot",
+			"seriesOverrides": [],
+			"spaceLength": 10,
+			"stack": false,
+			"steppedLine": false,
+			"targets": [
+				{
+					"expr": "container_memory_usage",
+					"interval": "",
+					"legendFormat": "{{container}} Memory",
+					"refId": "A"
+				}
+			],
+			"thresholds": [],
+			"timeRegions": [],
+			"title": "Container Memory Usage",
+			"tooltip": {
+				"shared": true,
+				"sort": 0,
+				"value_type": "individual"
+			},
+			"type": "graph",
+			"xaxis": {
+				"buckets": null,
+				"mode": "time",
+				"name": null,
+				"show": true,
+				"values": []
+			},
+			"yaxes": [
+				{
+					"format": "mbytes",
+					"label": null,
+					"logBase": 1,
+					"max": null,
+					"min": null,
+					"show": true
+				},
+				{
+					"format": "short",
+					"label": null,
+					"logBase": 1,
+					"max": null,
+					"min": null,
+					"show": true
+				}
+			],
+			"yaxis": {
+				"align": false,
+				"alignLevel": null
+			}
+		},
+		{
+			"collapsed": false,
+			"datasource": null,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 44
+			},
+			"id": 30,
+			"panels": [],
+			"title": "Response Time Metrics",
+			"type": "row"
+		},
+		{
+			"cards": {
+				"cardPadding": null,
+				"cardRound": null
+			},
+			"color": {
+				"cardColor": "#b4ff00",
+				"colorScale": "sqrt",
+				"colorScheme": "interpolateOranges",
+				"exponent": 0.5,
+				"mode": "spectrum"
+			},
+			"dataFormat": "tsbuckets",
+			"datasource": null,
+			"fieldConfig": {
+				"defaults": {},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 24,
+				"x": 0,
+				"y": 45
+			},
+			"heatmap": {},
+			"hideZeroBuckets": false,
+			"highlightCards": true,
+			"id": 18,
+			"legend": {
+				"show": true
+			},
+			"reverseYBuckets": false,
+			"targets": [
+				{
+					"expr": "sum(rate(response_time_bucket[5m])) by (le)",
+					"format": "heatmap",
+					"interval": "",
+					"legendFormat": "{{le}}",
+					"refId": "A"
+				}
+			],
+			"title": "Response Time Distribution",
+			"tooltip": {
+				"show": true,
+				"showHistogram": true
+			},
+			"type": "heatmap",
+			"xAxis": {
+				"show": true
+			},
+			"xBucketNumber": null,
+			"xBucketSize": null,
+			"yAxis": {
+				"decimals": null,
+				"format": "ms",
+				"logBase": 1,
+				"max": null,
+				"min": null,
+				"show": true,
+				"splitFactor": null
+			},
+			"yBucketBound": "auto",
+			"yBucketNumber": null,
+			"yBucketSize": null
+		}
+	],
+	"refresh": "5s",
+	"schemaVersion": 27,
+	"style": "dark",
+	"tags": ["monitoring", "machine learning", "models"],
+	"templating": {
+		"list": [
+			{
+				"allValue": null,
+				"current": {
+					"selected": true,
+					"text": "All",
+					"value": "$__all"
+				},
+				"datasource": "Prometheus",
+				"definition": "label_values(model_status, task_type)",
+				"description": null,
+				"error": null,
+				"hide": 0,
+				"includeAll": true,
+				"label": "Task Type",
+				"multi": false,
+				"name": "task_type",
+				"options": [],
+				"query": {
+					"query": "label_values(model_status, task_type)",
+					"refId": "StandardVariableQuery"
+				},
+				"refresh": 2,
+				"regex": "",
+				"skipUrlSync": false,
+				"sort": 1,
+				"tagValuesQuery": "",
+				"tags": [],
+				"tagsQuery": "",
+				"type": "query",
+				"useTags": false
+			},
+			{
+				"allValue": null,
+				"current": {
+					"selected": true,
+					"text": "All",
+					"value": "$__all"
+				},
+				"datasource": "Prometheus",
+				"definition": "label_values(model_status, model_name)",
+				"description": null,
+				"error": null,
+				"hide": 0,
+				"includeAll": true,
+				"label": "Model Name",
+				"multi": false,
+				"name": "model_name",
+				"options": [],
+				"query": {
+					"query": "label_values(model_status, model_name)",
+					"refId": "StandardVariableQuery"
+				},
+				"refresh": 2,
+				"regex": "",
+				"skipUrlSync": false,
+				"sort": 1,
+				"tagValuesQuery": "",
+				"tags": [],
+				"tagsQuery": "",
+				"type": "query",
+				"useTags": false
+			}
+		]
+	},
+	"time": {
+		"from": "now-1h",
+		"to": "now"
+	},
+	"timepicker": {
+		"refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+	},
+	"timezone": "",
+	"title": "Model Monitoring Dashboard",
+	"uid": "ML-model-monitoring",
+	"version": 1
+}

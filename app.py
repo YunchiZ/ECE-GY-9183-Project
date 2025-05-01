@@ -8,6 +8,11 @@ import sqlite3
 import numpy as np
 from typing import List
 
+from rouge_score import rouge_scorer
+from sklearn.metrics import accuracy_score
+
+from prometheus_update import UpdateAgent
+
 # ！！！！！！！
 # 全篇代码还差很多异常处理(try except)的框架
 # 例如对于指标s_metrics; c_metrics的操作等； 任何文件的读取与写入等等
@@ -61,6 +66,10 @@ deploy_data_dir = "/app/deploy_data"
 monitor_data_dir = "/app/monitor_data"
 label_dir = "/app/label"
 
+deploy_database = os.path.join(deploy_data_dir, "serving_data.db")
+label_database = os.path.join(label_dir, "label.db")
+
+LOCK_file = "/app/LOCK.json"
 # =====================================
 # 全局变量 Global Variables
 # 目前这里设置的逻辑是 为了简化过程 训练时同时启动三种模型流程 而非单独一个模型
@@ -110,43 +119,32 @@ c_metrics: List[List[float]] = [[], [], []]
 
 
 # ================================================ 板块隔离带
-def report(message, task_id, model_name, model_type):  # 报告给prometheus容器的通用函数
-    # 该函数内容在项目最后需要大改 因为该函数需要适应下面两个函数hardware_status和docker_status
-    # message = 1 -> data shift 外部数据分布漂移
-    # message = 2 -> error normal阶段 前端容器统计serving报警率超标
-    # message = 3 -> performance decay 模型性能衰退
-    # message = 4 -> shadow/canary阶段 候选模型错误率过高 直接被淘汰(消息播报 而非状态展示)
-    prometheus_url = "http://prometheus:9090"  # 是这样的吗?
-    payload = {
-        "warning_type": message,
-        "task_type": task_id,
-        "model_name": model_name,
-        "model_type": model_type,
-    }
-    # 该payload后期需要大改
-    # 根据prometheus和grafana的具体工作机制来决定这里是否需要更详细的payload信息封装
-    try:
-        response = requests.post(prometheus_url, json=payload, timeout=5)
-        logging.info(
-            f"Notified prometheus docker with {payload}, status: {response.status_code}"
-        )
+# def report(message, task_id, model_name, model_type):  # 报告给prometheus容器的通用函数
+#     # 该函数内容在项目最后需要大改 因为该函数需要适应下面两个函数hardware_status和docker_status
+#     # message = 1 -> data shift 外部数据分布漂移
+#     # message = 2 -> error normal阶段 前端容器统计serving报警率超标
+#     # message = 3 -> performance decay 模型性能衰退
+#     # message = 4 -> shadow/canary阶段 候选模型错误率过高 直接被淘汰(消息播报 而非状态展示)
 
-    except requests.RequestException as e:
-        logging.error(f"Error notifying prometheus docker: {e}")
+#     # 放到一个端口上让Prometheus抓取
 
+#     prometheus_url = "http://prometheus:9090"  # 是这样的吗?
+#     payload = {
+#         "warning_type": message,
+#         "task_type": task_id,
+#         "model_name": model_name,
+#         "model_type": model_type,
+#     }
+#     # 该payload后期需要大改
+#     # 根据prometheus和grafana的具体工作机制来决定这里是否需要更详细的payload信息封装
+#     try:
+#         response = requests.post(prometheus_url, json=payload, timeout=5)
+#         logging.info(
+#             f"Notified prometheus docker with {payload}, status: {response.status_code}"
+#         )
 
-def hardware_status():  # 用于定期监控主机的硬件状态 并报告给prometheus
-    # $
-    pass
-    payload = {}
-    # report(payload)
-
-
-def docker_status():  # 用于定期监控主机内所有容器的健康状况/主动检健康状况 并报告
-    pass
-    # $ http 访问 docker - healthcheck？ 目前不知道具体怎么做的
-    payload = {}
-    # report(payload)
+#     except requests.RequestException as e:
+#         logging.error(f"Error notifying prometheus docker: {e}")
 
 
 # ================================================
@@ -174,32 +172,247 @@ def notify(docker, index, notification_type):
 # 2) 访问试探 try except
 # 3) 系列异常处理
 
+# deploy_data schema:
+# CREATE TABLE IF NOT EXISTs predictions (id INTEGER PRIMARY KEY AUTOINCREMENT
+# input TEXT
+# pred TEXT/INTEGER
+
+
+# label schema:
+# id INTEGER PRIMARY KEY
+# input TEXT
+# label TEXT/INTEGER
+
 
 def database_merge(root_name):
+
+    # index 确定任务类型，创建对应表单
     # $ 根据deploy_data_dir和serving[index]确定database访问路径
     # $ 根据label_dir以及? 确定用户行为标签库/文件的访问路径
     # $ 生成对应的临时数据库放置的地址 有可能这个步骤不需要 因为有可能直接在原地进行拼接 但还是建议拼接成一个新的数据库 避免冲突
-    database_dir = os.path.join(monitor_data_dir, root_name)  # 需要根据实际情况修改
+
+    new_db_path = os.path.join(monitor_data_dir, root_name)
+
+    deploy_database = os.path.join(deploy_database, "serving_data.db")
+    label_database = os.path.join(label_database, "label.db")
+
+    deploy_conn = sqlite3.connect(deploy_database)
+    deploy_cur = deploy_conn.cursor()
+
+    label_conn = sqlite3.connect(label_database)
+    label_cur = label_conn.cursor()
+
+    deploy_cur.execute(f"ATTACH DATABASE '{label_database}' AS label_db")
+
+    new_conn = sqlite3.connect(new_db_path)
+    new_cur = new_conn.cursor()
+
+    # 在新数据库中创建三个表，分别对应三个任务
+    new_cur.execute(
+        """
+    CREATE TABLE IF NOT EXISTS task1_data (
+        id INTEGER PRIMARY KEY,
+        predictions_input TEXT,
+        predictions_pred TEXT,
+        label_input TEXT,
+        label_label1 TEXT
+    )
+    """
+    )
+
+    new_cur.execute(
+        """
+    CREATE TABLE IF NOT EXISTS task2_data (
+        id INTEGER PRIMARY KEY,
+        predictions_input TEXT,
+        predictions_pred TEXT,
+        label_input TEXT,
+        label_label2 INTEGER
+    )
+    """
+    )
+
+    new_cur.execute(
+        """
+    CREATE TABLE IF NOT EXISTS task3_data (
+        id INTEGER PRIMARY KEY,
+        predictions_input TEXT,
+        predictions_pred TEXT,
+        label_input TEXT,
+        label_label3 INTEGER
+    )
+    """
+    )
+
+    # 执行基本查询获取所有匹配记录
+    base_query = """
+    SELECT 
+        p.id,
+        p.input AS predictions_input,
+        p.pred AS predictions_pred,
+        l.input AS label_input,
+        l.pred1 AS label_label1,
+        l.pred2 AS label_label2,
+        l.pred3 AS label_label3
+    FROM 
+        predictions p
+    JOIN 
+        label_db.label l ON p.id = l.id
+    """
+
+    results = deploy_cur.execute(base_query).fetchall()
+
+    task1_insert = """
+    INSERT INTO task1_data (
+        id, predictions_input, predictions_pred, label_input, label_label1
+    ) VALUES (?, ?, ?, ?, ?)
+    """
+
+    task2_insert = """
+    INSERT INTO task2_data (
+        id, predictions_input, predictions_pred, label_input, label_label2
+    ) VALUES (?, ?, ?, ?, ?)
+    """
+
+    task3_insert = """
+    INSERT INTO task3_data (
+        id, predictions_input, predictions_pred, label_input, label_label3
+    ) VALUES (?, ?, ?, ?, ?)
+    """
+
+    task1_data = [(row[0], row[1], row[2], row[3], row[4]) for row in results]
+    task2_data = [(row[0], row[1], row[2], row[3], row[5]) for row in results]
+    task3_data = [(row[0], row[1], row[2], row[3], row[6]) for row in results]
+
+    new_cur.executemany(task1_insert, task1_data)
+    new_cur.executemany(task2_insert, task2_data)
+    new_cur.executemany(task3_insert, task3_data)
+
+    new_conn.commit()
+
+    deploy_cur.close()
+    deploy_conn.close()
+    label_cur.close()
+    label_conn.close()
+    new_cur.close()
+    new_conn.close()
+
     # $ (数据库行为) 根据prediction ID 进行数据库内容匹配和整合
     # $ 将新数据库放置在database_dir中 等待下面的metric_analysis函数进行阶段定制化分析
-    return database_dir
+    return new_db_path
 
 
 def clear_labels(label_type):  # 删除/app/labels中被访问过的数据库
     # 访问/app/labels中的数据库 注意是否需要使用线程锁
     # 根据label_type检测当前任务数据库
     # 删除对应的任务的数据库
+
+    # 考虑前端直接覆盖文件
     return None
 
 
 def metric_analysis(database, itype, data_analysis, e_analysis):
+
+    conn = sqlite3.connect(database)
+    cur = conn.cursor()
+
     error_status, data_info = False, 0
     # $ 根据传入的目标数据库地址"database"进行访问
     # $ 通过prediction条目与label条目进行对应的指标分析
-    if itype == 0:  # 对于文本总结任务
-        metric = 1  # 计算文本的ROUGE
-    else:  # 对于其余两个分类任务
-        metric = 0  # 计算分类ACC
+    try:
+        # 任务1: 文本摘要评估 (ROUGE)
+        if itype == 0:
+            # 从task1_data表中获取所有预测和标签
+            query = "SELECT id, predictions_pred, label_label1 FROM task1_data"
+            results = cur.execute(query).fetchall()
+
+            # 初始化ROUGE评分器和分数列表
+            scorer = rouge_scorer.RougeScorer(
+                ["rouge1", "rouge2", "rougeL"], use_stemmer=True
+            )
+            rouge_scores = []
+
+            # 计算每个样本的ROUGE分数
+            for id, pred, label in results:
+                if pred and label:  # 确保预测和标签都不为空
+                    scores = scorer.score(label, pred)
+                    # 使用F1分数作为主要指标
+                    rouge_f1 = {k: v.fmeasure for k, v in scores.items()}
+                    rouge_scores.append(rouge_f1)
+
+            # 计算平均ROUGE分数
+            avg_scores = {}
+            for key in ["rouge1", "rouge2", "rougeL"]:
+                avg_scores[key] = np.mean([score[key] for score in rouge_scores])
+            # 比例待定
+            metric1 = (
+                0.2 * avg_scores["rouge1"]
+                + 0.3 * avg_scores["rouge2"]
+                + 0.5 * avg_scores["rougeL"]
+            )
+
+        # 任务2: 分类任务1的ACC评估
+        elif itype == 1:
+            # 从task2_data表中获取所有预测和标签
+            query = "SELECT id, predictions_pred, label_label2 FROM task2_data"
+            results = cur.execute(query).fetchall()
+
+            # 提取预测和真实标签
+            y_pred = []
+            y_true = []
+
+            for id, pred, label in results:
+                # 确保预测值和标签是整数
+                try:
+                    pred_val = int(pred)
+                    label_val = int(label)
+                    y_pred.append(pred_val)
+                    y_true.append(label_val)
+                except (ValueError, TypeError):
+                    continue  # 跳过无法转换为整数的值
+
+            # 计算准确率
+            if y_pred and y_true:
+                accuracy = accuracy_score(y_true, y_pred)
+
+                metric2 = accuracy
+
+        # 任务3: 分类任务2的ACC评估
+        elif itype == 2:
+            # 从task3_data表中获取所有预测和标签
+            query = "SELECT id, predictions_pred, label_label3 FROM task3_data"
+            results = cur.execute(query).fetchall()
+
+            # 提取预测和真实标签
+            y_pred = []
+            y_true = []
+
+            for id, pred, label in results:
+                # 确保预测值和标签是整数
+                try:
+                    pred_val = int(pred)
+                    label_val = int(label)
+                    y_pred.append(pred_val)
+                    y_true.append(label_val)
+                except (ValueError, TypeError):
+                    continue  # 跳过无法转换为整数的值
+
+            # 计算准确率
+            if y_pred and y_true:
+                accuracy = accuracy_score(y_true, y_pred)
+
+                metric3 = accuracy
+
+        else:
+            error_status = True
+            data_info = f"无效的任务类型: {itype}"
+
+    finally:
+        # 关闭数据库连接
+        cur.close()
+        conn.close()
+
+    metric = (metric1, metric2, metric3)
 
     # $ 在normal阶段需要分析数据分布的改变:
     if data_analysis:
@@ -213,6 +426,10 @@ def metric_analysis(database, itype, data_analysis, e_analysis):
         error_rate = 0  # 统计数据库error条目占比
         # $ 然后判断error_rate有无超过critical_err这个值
         # $ 如果超过了 那么 error_status = True
+        if error_rate > critical_err:
+            error_status = True
+        else:
+            error_status = False
 
     return metric, data_info, error_status
 
@@ -250,9 +467,7 @@ def init():
         logging.error("No notification type provided in the request.")
         return "No notification type provided", 400
 
-    if (
-        model_index < 0 or model_index > 2 or not isinstance(model_index, int)
-    ):  # gpt标注说这个地方是有问题的
+    if model_index not in [0, 1, 2]:
         logging.error("Invalid model index.")
         return "Invalid model index", 400
 
@@ -261,9 +476,8 @@ def init():
             candidate[model_index] = model
             stage[model_index] = "shadow"
             # $ 需要重置serving相关的指标 因为shadow阶段需要比较接下来同期的serving和candidate表现：
-            s_metrics[model_index] = (
-                []
-            )  # 需要重置serving相关的指标 目前好像指标就只有一个
+            s_metrics[model_index] = []
+            # 需要重置serving相关的指标 目前好像指标就只有一个
             c_metrics[model_index] = []  # 连同candidate也一起重置了
             # 之前的serving监控记录已经没有意义了 因为现在的重点考察对象是candidate
         # 不需要进行报告 deploy会将此条部署汇报给prometheus
@@ -317,7 +531,7 @@ def monitor():
         # 1）首先将对应database与label卷中的数据进行数据库匹配和拼接 并且放置于monitor data中
         with thread_lock:
             serving_name = serving[index]
-        db_dir = database_merge(serving_name)
+        db_dir = database_merge(serving_name, index)
         clear_labels(index)
         # 2）接下来遍历该数据库 进行匹配、指标计算、整合、迁移; normal阶段的错误统计由前端统计 不在这里统计:
         metric, data, _ = metric_analysis(db_dir, index, True, False)
@@ -335,23 +549,45 @@ def monitor():
         # 5) 接下来进入临界条件的判断: 有无frontend统计错误率超标 / 有无数据漂移 / 有无性能衰退
         # 实际上为了此部分的流程效率 临界条件判断是有优先级的 但是由于需要向prometheus全部上报 所以三者都需要进行判断
         # 如果临界条件被触发 则根据LOCK.json触发ETL并且告警给prometheus
-        if data_shift or err_info or avg_metric - metric < critical_decay[index]:
+        if data_shift or err_info or (avg_metric - metric < critical_decay[index]):
             with thread_lock:
-                # $使用try和with open语句根据LOCK_file地址读取LOCK.json文件中的键LOCK的值
+                # 读取LOCK.json文件中的LOCK键的值
                 lock = False
+                try:
+                    with open(LOCK_file, "r") as f:
+                        lock_data = json.load(f)
+                        lock = lock_data.get("LOCK", False)
+                except Exception as e:
+                    print(f"读取锁文件时出错: {e}")
+
                 if lock:
                     code = notify(
                         "etl", None, "trigger"
                     )  # 其实消息内容不重要 重要的是触发
                     if code == 200:  # 说明ETL触发成功
-                        pass  # $ 用try和with open语句根据LOCK_file地址修改LOCK.json文件中的键LOCK的值为True
+                        # 修改LOCK.json文件中的LOCK键值为True
+                        try:
+                            with open(LOCK_file, "r") as f:
+                                lock_data = json.load(f)
+
+                            lock_data["LOCK"] = True
+
+                            with open(LOCK_file, "w") as f:
+                                json.dump(lock_data, f)
+                        except Exception as e:
+                            print(f"修改锁文件时出错: {e}")
         # 6) 给prometheus报告相关情况
         if data_shift:
-            report("data shift", index, serving_name, "serving")
+            prometheus_agent.report_warning(
+                "data shift", index, serving_name, "serving"
+            )
+
         # if err_info:
         #     report("2", index, "serving")
         if avg_metric - metric >= critical_decay[index]:
-            report("metric decay", index, serving_name, "serving")
+            prometheus_agent.report_warning(
+                "performance decay", index, serving_name, "serving"
+            )
 
     elif status == "shadow":
         fail = False
@@ -402,7 +638,9 @@ def monitor():
                 # 等待立即进入shadow(online evaluation) fail的标准阶段
         if fail:
             # $ 报告给prometheus - candidate模型错误率超标:(下面的代码可能要改)
-            report("excessive error", index, candidate_name, "candidate")
+            prometheus_agent.report_warning(
+                "excessive error", index, candidate_name, "candidate"
+            )
             with thread_lock:
                 stage[index] = "normal"
                 # s_metric[index] = []  这行代码可以不用 因为既然已经失败了 可以保留serving记录 其实不用清除
@@ -464,9 +702,15 @@ def warning():
             # 2. 直接进行修改 会使得部分数据库没有来得及被搬运至monitor data卷供后续新模型训练
             # $ 向prometheus汇报此error信息 汇报时不需要使用线程锁:
             if current_status == "normal":
-                report("excessive error", ind, serving_name, "serving")
+                prometheus_agent.report_warning(
+                    "excessive error", ind, serving_name, "serving"
+                )
+
             elif current_status == "canary":
-                report("excessive error", ind, candidate_name, "candidate")
+                prometheus_agent.report_warning(
+                    "excessive error", ind, candidate_name, "candidate"
+                )
+
         else:
             logging.error(f"Error index type out of range: {ind}")
             return "Error index type out of range", 400
@@ -481,10 +725,8 @@ def warning():
 
 # ---------------- Main ----------------
 if __name__ == "__main__":
-    threading.Thread(target=hardware_status).start()  # 线程1 旁路
-    threading.Thread(
-        target=docker_status
-    ).start()  # 线程2 旁路 # 此部分有可能不做开发 因为不是项目的硬性要求
+    init()
+    prometheus_agent = UpdateAgent()
     app.run(
         host="0.0.0.0", port=8000, threaded=True
     )  # 外部触发的关于模型部署的监控 线路3 主路
