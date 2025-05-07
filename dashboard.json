@@ -100,7 +100,7 @@
 						"axisColorMode": "text",
 						"axisLabel": "",
 						"axisPlacement": "auto",
-						"fillOpacity": 80,
+						"fillOpacity": 65,
 						"gradientMode": "none",
 						"hideFrom": {
 							"legend": false,
@@ -132,7 +132,7 @@
 				"overrides": []
 			},
 			"gridPos": {
-				"h": 8,
+				"h": 11,
 				"w": 12,
 				"x": 0,
 				"y": 1
@@ -151,7 +151,7 @@
 				},
 				"orientation": "auto",
 				"showValue": "auto",
-				"stacking": "percent",
+				"stacking": "normal",
 				"tooltip": {
 					"hideZeros": false,
 					"mode": "single",
@@ -279,7 +279,7 @@
 				"overrides": []
 			},
 			"gridPos": {
-				"h": 7,
+				"h": 14,
 				"w": 12,
 				"x": 12,
 				"y": 1
@@ -335,7 +335,7 @@
 				"h": 9,
 				"w": 12,
 				"x": 0,
-				"y": 9
+				"y": 12
 			},
 			"id": 4,
 			"options": {
@@ -371,7 +371,7 @@
 				"h": 1,
 				"w": 24,
 				"x": 0,
-				"y": 18
+				"y": 21
 			},
 			"id": 5,
 			"panels": [],
@@ -438,10 +438,10 @@
 				"overrides": []
 			},
 			"gridPos": {
-				"h": 8,
+				"h": 5,
 				"w": 24,
 				"x": 0,
-				"y": 19
+				"y": 22
 			},
 			"id": 14,
 			"options": {
@@ -467,6 +467,7 @@
 						"type": "prometheus",
 						"uid": "${DS_PROMETHEUS}"
 					},
+					"editorMode": "code",
 					"expr": "model_deployment_status",
 					"instant": true,
 					"interval": "",
@@ -565,7 +566,7 @@
 				"overrides": []
 			},
 			"gridPos": {
-				"h": 8,
+				"h": 9,
 				"w": 12,
 				"x": 0,
 				"y": 28
@@ -668,7 +669,7 @@
 				"overrides": []
 			},
 			"gridPos": {
-				"h": 8,
+				"h": 9,
 				"w": 12,
 				"x": 12,
 				"y": 28
@@ -768,10 +769,10 @@
 				"overrides": []
 			},
 			"gridPos": {
-				"h": 8,
+				"h": 9,
 				"w": 12,
 				"x": 0,
-				"y": 36
+				"y": 37
 			},
 			"id": 11,
 			"options": {
@@ -868,10 +869,10 @@
 				"overrides": []
 			},
 			"gridPos": {
-				"h": 8,
+				"h": 9,
 				"w": 12,
 				"x": 12,
-				"y": 36
+				"y": 37
 			},
 			"id": 12,
 			"options": {
@@ -973,7 +974,7 @@
 				"h": 8,
 				"w": 12,
 				"x": 0,
-				"y": 44
+				"y": 46
 			},
 			"id": 13,
 			"options": {
@@ -1021,6 +1022,6 @@
 	"timezone": "",
 	"title": "Model Monitoring Dashboard2",
 	"uid": "model-monitoring2",
-	"version": 18,
+	"version": 22,
 	"weekStart": ""
 }
