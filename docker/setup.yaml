@@ -1,14 +1,29 @@
 version: '3.9'
+
 services:
   etl:
     build: ../data_pipeline
     container_name: etl
     ports:
-      - "8000:8000"  
+      - "8000:8000"  # Flask API 端口
+      - "8001:8001"  # Prometheus 指标端口
     volumes:
-      - /mnt/vdb/raw_data:/app/raw_data   # allow container read data from local
-      - /mnt/vdb/output:/app/output
+      - ./:/app  # 代码目录
+      - /mnt/vdb/raw_data:/app/deploy_data  # 使用 bind mount 挂载块存储
+      - /mnt/vdb/output:/app/processed_data  # 使用 bind mount 挂载块存储
+      - etl_data:/app/etl_data  # ETL 工作目录
     environment:
-      - ETL_MODE=prod
+      - TZ=Asia/Shanghai  # 时区设置
+      - ETL_MODE=prod  # 生产模式
     command: >
-      bash -c "python3 etl.py"
+      bash -c "gunicorn -w 1 --threads 4 -b 0.0.0.0:8000 etl_app:app"  # 启动 ETL 应用
+    networks:
+      - app_network  # 确保与其他服务在同一网络
+
+volumes:
+  etl_data:  # 保留 ETL 工作目录卷
+
+# 定义网络
+networks:
+  app_network:
+    driver: bridge 
