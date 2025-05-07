@@ -1,0 +1,45 @@
+FROM python:3.11-slim-bullseye
+
+# 1. avoid pip cache
+ENV PIP_NO_CACHE_DIR=1 \
+    PYTHONUNBUFFERED=1
+
+# 2. Work Directory
+WORKDIR /app
+
+# 3. Copy Env 
+COPY requirements.txt .
+
+# 4. Install system rely
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        wget ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# 5. Python rely
+RUN python -m pip install --upgrade pip && \
+    pip install -r requirements.txt
+
+# 6. Copy source codes
+COPY . .
+
+# 7. install perf_analyzer（≈30 MB）
+RUN set -eux; \
+    apt-get update && \
+    apt-get install -y --no-install-recommends wget ca-certificates && \
+    wget -qO- https://github.com/triton-inference-server/server/releases/download/v2.46.0/perf_analyzer-linux-x86_64.tar.gz \
+      | tar -xz -C /usr/local/bin && \
+    chmod +x /usr/local/bin/perf_analyzer && \
+    apt-get purge -y --auto-remove wget && \
+    rm -rf /var/lib/apt/lists/*
+
+# 8. Port expose
+EXPOSE 8000
+
+# 9. User: non-root
+# RUN useradd -m svc && chown -R svc /app
+# USER svc
+
+# 10. Docker launch
+CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

@@ -1,6 +1,5 @@
-from sqlite3 import Connection
 import os, sqlite3, logging, time
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Any
 
 DEPLOY_DATA_DIR = '/app/deploy_data'
 SERVING_DB      = os.path.join(DEPLOY_DATA_DIR, "serving.db")

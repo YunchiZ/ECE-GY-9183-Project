@@ -1,5 +1,6 @@
-import httpx, asyncio, logging
+import httpx, asyncio, logging, subprocess, re, shutil
 from typing import Any, Dict, Optional, Union
+from func import split_model_tag
 
 # Triton Address
 TRITON_HOST     = "http://triton:8000"
@@ -111,8 +112,44 @@ async def triton_config(model_name: str,
             await asyncio.sleep(0.5)
 
 
-def load_test(test_model: str) -> bool:
+# Load Test
+def _parse_p95(stdout: str) -> float:
     """
-    真正的压测实现留空；这里先返回 True 方便主流程。
+    从 perf_analyzer stdout 中提取 P95 latency（单位 ms）
+    Example line:
+      95th percentile latency (ns):  4287360
     """
+    m = re.search(r"95th percentile latency.*?:\s+(\d+)", stdout)
+    return int(m.group(1)) / 1e6 if m else 1e9   # ns→ms
+
+
+def load_test(model_tag: str,
+              batch_sizes=(1, 4, 8),
+              concurrencies=(1, 4, 8),
+              p95_budget_ms: int = 500) -> bool:
+    """True = 通过；False = 淘汰"""
+    if shutil.which("perf_analyzer") is None:
+        logging.error("perf_analyzer not found in PATH")
+        return False
+
+    name, ver = split_model_tag(model_tag)
+    for b in batch_sizes:
+        for c in concurrencies:
+            cmd = [
+                "perf_analyzer",
+                "-m", name,
+                "-v", ver,
+                "-b", str(b),
+                "--concurrency-range", str(c),
+                "--measurement-interval", "3000"
+            ]
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            p95 = _parse_p95(res.stdout)
+
+            if p95 > p95_budget_ms:
+                logging.info("FAIL %s batch=%s concur=%s p95=%.1f ms (budget %d)",
+                             model_tag, b, c, p95, p95_budget_ms)
+                return False
+
+    logging.info("PASS %s passed load test", model_tag)
     return True
