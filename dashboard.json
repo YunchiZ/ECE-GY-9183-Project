@@ -1,4 +1,53 @@
 {
+	"__inputs": [
+		{
+			"name": "DS_PROMETHEUS",
+			"label": "prometheus",
+			"description": "",
+			"type": "datasource",
+			"pluginId": "prometheus",
+			"pluginName": "Prometheus"
+		}
+	],
+	"__elements": {},
+	"__requires": [
+		{
+			"type": "panel",
+			"id": "barchart",
+			"name": "Bar chart",
+			"version": ""
+		},
+		{
+			"type": "grafana",
+			"id": "grafana",
+			"name": "Grafana",
+			"version": "11.6.0"
+		},
+		{
+			"type": "panel",
+			"id": "logs",
+			"name": "Logs",
+			"version": ""
+		},
+		{
+			"type": "datasource",
+			"id": "prometheus",
+			"name": "Prometheus",
+			"version": "1.0.0"
+		},
+		{
+			"type": "panel",
+			"id": "table",
+			"name": "Table",
+			"version": ""
+		},
+		{
+			"type": "panel",
+			"id": "timeseries",
+			"name": "Time series",
+			"version": ""
+		}
+	],
 	"annotations": {
 		"list": [
 			{
@@ -18,7 +67,7 @@
 	"editable": true,
 	"fiscalYearStartMonth": 0,
 	"graphTooltip": 0,
-	"id": 19,
+	"id": null,
 	"links": [],
 	"panels": [
 		{
@@ -37,7 +86,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "feixqooky7d34a"
+				"uid": "${DS_PROMETHEUS}"
 			},
 			"description": "Distribution of input lengths over time",
 			"fieldConfig": {
@@ -49,30 +98,18 @@
 						"axisBorderShow": false,
 						"axisCenteredZero": false,
 						"axisColorMode": "text",
-						"axisLabel": "Count",
+						"axisLabel": "",
 						"axisPlacement": "auto",
-						"barAlignment": 0,
-						"barWidthFactor": 0.6,
-						"drawStyle": "line",
-						"fillOpacity": 10,
+						"fillOpacity": 80,
 						"gradientMode": "none",
 						"hideFrom": {
 							"legend": false,
 							"tooltip": false,
 							"viz": false
 						},
-						"insertNulls": false,
-						"lineInterpolation": "linear",
 						"lineWidth": 1,
-						"pointSize": 5,
 						"scaleDistribution": {
 							"type": "linear"
-						},
-						"showPoints": "never",
-						"spanNulls": false,
-						"stacking": {
-							"group": "A",
-							"mode": "none"
 						},
 						"thresholdsStyle": {
 							"mode": "off"
@@ -90,8 +127,7 @@
 								"value": 80
 							}
 						]
-					},
-					"unit": "short"
+					}
 				},
 				"overrides": []
 			},
@@ -103,39 +139,100 @@
 			},
 			"id": 2,
 			"options": {
-				"alertThreshold": true,
+				"barRadius": 0,
+				"barWidth": 0.97,
+				"fullHighlight": false,
+				"groupWidth": 0.7,
 				"legend": {
 					"calcs": [],
 					"displayMode": "list",
 					"placement": "bottom",
 					"showLegend": true
 				},
+				"orientation": "auto",
+				"showValue": "auto",
+				"stacking": "percent",
 				"tooltip": {
 					"hideZeros": false,
-					"mode": "multi",
+					"mode": "single",
 					"sort": "none"
-				}
+				},
+				"xTickLabelRotation": 0,
+				"xTickLabelSpacing": 100
 			},
 			"pluginVersion": "11.6.0",
 			"targets": [
 				{
+					"editorMode": "code",
+					"expr": "sum(rate(data_word_length_bucket{le=\"50.0\"}[1h])) / sum(rate(data_word_length_count[1h]))",
+					"legendFormat": "0-50",
+					"range": true,
+					"refId": "A",
 					"datasource": {
 						"type": "prometheus",
-						"uid": "feixqooky7d34a"
+						"uid": "${DS_PROMETHEUS}"
+					}
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
 					},
-					"expr": "input_length_distribution_count",
-					"interval": "",
-					"legendFormat": "Length: {{length_bucket}}",
-					"refId": "A"
+					"editorMode": "code",
+					"expr": "(sum(rate(data_word_length_bucket{le=\"100.0\"}[1h])) - sum(rate(data_word_length_bucket{le=\"50.0\"}[1h]))) / sum(rate(data_word_length_count[1h]))\r\n",
+					"hide": false,
+					"instant": false,
+					"legendFormat": "50-100",
+					"range": true,
+					"refId": "B"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "(sum(rate(data_word_length_bucket{le=\"250.0\"}[1h])) - sum(rate(data_word_length_bucket{le=\"100.0\"}[1h]))) / sum(rate(data_word_length_count[1h]))",
+					"hide": false,
+					"instant": false,
+					"legendFormat": "100-250",
+					"range": true,
+					"refId": "C"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "(sum(rate(data_word_length_bucket{le=\"500.0\"}[1h])) - sum(rate(data_word_length_bucket{le=\"250.0\"}[1h]))) / sum(rate(data_word_length_count[1h]))",
+					"hide": false,
+					"instant": false,
+					"legendFormat": "250-500",
+					"range": true,
+					"refId": "D"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "(sum(rate(data_word_length_bucket{le=\"1000.0\"}[1h])) - sum(rate(data_word_length_bucket{le=\"500.0\"}[1h]))) / sum(rate(data_word_length_count[1h]))",
+					"hide": false,
+					"instant": false,
+					"legendFormat": "500-1000",
+					"range": true,
+					"refId": "E"
 				}
 			],
 			"title": "Input Length Frequency Distribution",
-			"type": "timeseries"
+			"type": "barchart"
 		},
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "feixqooky7d34a"
+				"uid": "${DS_PROMETHEUS}"
 			},
 			"description": "Frequency of different category labels over time",
 			"fieldConfig": {
@@ -147,30 +244,18 @@
 						"axisBorderShow": false,
 						"axisCenteredZero": false,
 						"axisColorMode": "text",
-						"axisLabel": "Frequency",
+						"axisLabel": "",
 						"axisPlacement": "auto",
-						"barAlignment": 0,
-						"barWidthFactor": 0.6,
-						"drawStyle": "line",
-						"fillOpacity": 10,
+						"fillOpacity": 53,
 						"gradientMode": "none",
 						"hideFrom": {
 							"legend": false,
 							"tooltip": false,
 							"viz": false
 						},
-						"insertNulls": false,
-						"lineInterpolation": "linear",
 						"lineWidth": 1,
-						"pointSize": 5,
 						"scaleDistribution": {
 							"type": "linear"
-						},
-						"showPoints": "never",
-						"spanNulls": false,
-						"stacking": {
-							"group": "A",
-							"mode": "none"
 						},
 						"thresholdsStyle": {
 							"mode": "off"
@@ -194,52 +279,58 @@
 				"overrides": []
 			},
 			"gridPos": {
-				"h": 8,
+				"h": 7,
 				"w": 12,
 				"x": 12,
 				"y": 1
 			},
 			"id": 3,
 			"options": {
-				"alertThreshold": true,
+				"barRadius": 0,
+				"barWidth": 0.75,
+				"fullHighlight": false,
+				"groupWidth": 0.7,
 				"legend": {
 					"calcs": [],
 					"displayMode": "list",
 					"placement": "bottom",
 					"showLegend": true
 				},
+				"orientation": "auto",
+				"showValue": "auto",
+				"stacking": "percent",
 				"tooltip": {
 					"hideZeros": false,
-					"mode": "multi",
+					"mode": "single",
 					"sort": "none"
-				}
+				},
+				"xTickLabelRotation": 0,
+				"xTickLabelSpacing": 100
 			},
 			"pluginVersion": "11.6.0",
 			"targets": [
 				{
 					"datasource": {
 						"type": "prometheus",
-						"uid": "feixqooky7d34a"
+						"uid": "${DS_PROMETHEUS}"
 					},
-					"expr": "category_label_frequency",
+					"editorMode": "code",
+					"expr": "data_label_frequency",
 					"interval": "",
-					"legendFormat": "{{category}}",
+					"legendFormat": "{{label}}",
+					"range": true,
 					"refId": "A"
 				}
 			],
 			"title": "Category Label Frequency Changes",
-			"type": "timeseries"
+			"type": "barchart"
 		},
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "feixqooky7d34a"
+				"uid": "${DS_PROMETHEUS}"
 			},
 			"description": "Log of data quality issues detected",
-			"fieldConfig": {
-				"defaults": {},
-				"overrides": []
-			},
 			"gridPos": {
 				"h": 9,
 				"w": 12,
@@ -263,7 +354,7 @@
 				{
 					"datasource": {
 						"type": "prometheus",
-						"uid": "feixqooky7d34a"
+						"uid": "${DS_PROMETHEUS}"
 					},
 					"expr": "data_quality_issues",
 					"interval": "",
@@ -290,7 +381,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "feixqooky7d34a"
+				"uid": "${DS_PROMETHEUS}"
 			},
 			"description": "Current deployment status of all models",
 			"fieldConfig": {
@@ -364,8 +455,8 @@
 				"showHeader": true,
 				"sortBy": [
 					{
-						"desc": false,
-						"displayName": "Model"
+						"desc": true,
+						"displayName": "model1"
 					}
 				]
 			},
@@ -374,7 +465,7 @@
 				{
 					"datasource": {
 						"type": "prometheus",
-						"uid": "feixqooky7d34a"
+						"uid": "${DS_PROMETHEUS}"
 					},
 					"expr": "model_deployment_status",
 					"instant": true,
@@ -415,7 +506,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "feixqooky7d34a"
+				"uid": "${DS_PROMETHEUS}"
 			},
 			"description": "Timeline of various metrics",
 			"fieldConfig": {
@@ -499,11 +590,16 @@
 				{
 					"datasource": {
 						"type": "prometheus",
-						"uid": "feixqooky7d34a"
+						"uid": "${DS_PROMETHEUS}"
 					},
-					"expr": "metrics_timeline",
+					"editorMode": "code",
+					"exemplar": false,
+					"expr": "model_metrics",
+					"format": "time_series",
+					"instant": false,
 					"interval": "",
-					"legendFormat": "{{metric}}",
+					"legendFormat": "{{model_name}} - {{metric_type}}",
+					"range": true,
 					"refId": "A"
 				}
 			],
@@ -513,7 +609,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "feixqooky7d34a"
+				"uid": "${DS_PROMETHEUS}"
 			},
 			"description": "Total time to last byte (TTLB) for API responses",
 			"fieldConfig": {
@@ -597,11 +693,13 @@
 				{
 					"datasource": {
 						"type": "prometheus",
-						"uid": "feixqooky7d34a"
+						"uid": "${DS_PROMETHEUS}"
 					},
-					"expr": "total_response_time_ttlb",
+					"editorMode": "code",
+					"expr": "histogram_quantile(0.95, sum(rate(model_response_time_bucket[$__rate_interval])) by (le, model_name))",
 					"interval": "",
 					"legendFormat": "{{endpoint}}",
+					"range": true,
 					"refId": "A"
 				}
 			],
@@ -611,7 +709,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "feixqooky7d34a"
+				"uid": "${DS_PROMETHEUS}"
 			},
 			"description": "Service processing time",
 			"fieldConfig": {
@@ -695,11 +793,13 @@
 				{
 					"datasource": {
 						"type": "prometheus",
-						"uid": "feixqooky7d34a"
+						"uid": "${DS_PROMETHEUS}"
 					},
-					"expr": "service_time",
+					"editorMode": "code",
+					"expr": "histogram_quantile(0.95, sum(rate(model_service_time_bucket[$__rate_interval])) by (le, model_name))",
 					"interval": "",
-					"legendFormat": "{{service}}",
+					"legendFormat": "{{model_name}} - p95",
+					"range": true,
 					"refId": "A"
 				}
 			],
@@ -709,7 +809,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "feixqooky7d34a"
+				"uid": "${DS_PROMETHEUS}"
 			},
 			"description": "Model inference processing time",
 			"fieldConfig": {
@@ -793,11 +893,13 @@
 				{
 					"datasource": {
 						"type": "prometheus",
-						"uid": "feixqooky7d34a"
+						"uid": "${DS_PROMETHEUS}"
 					},
-					"expr": "model_inference_time",
+					"editorMode": "code",
+					"expr": "histogram_quantile(0.95, sum(rate(model_inference_time_bucket[$__rate_interval])) by (le, model_name))",
 					"interval": "",
 					"legendFormat": "{{model}}",
+					"range": true,
 					"refId": "A"
 				}
 			],
@@ -807,7 +909,7 @@
 		{
 			"datasource": {
 				"type": "prometheus",
-				"uid": "feixqooky7d34a"
+				"uid": "${DS_PROMETHEUS}"
 			},
 			"description": "Error rate by type",
 			"fieldConfig": {
@@ -893,7 +995,7 @@
 				{
 					"datasource": {
 						"type": "prometheus",
-						"uid": "feixqooky7d34a"
+						"uid": "${DS_PROMETHEUS}"
 					},
 					"expr": "error_rate",
 					"interval": "",
@@ -905,7 +1007,6 @@
 			"type": "timeseries"
 		}
 	],
-	"preload": false,
 	"refresh": "5s",
 	"schemaVersion": 41,
 	"tags": ["model", "performance", "monitoring"],
@@ -913,12 +1014,13 @@
 		"list": []
 	},
 	"time": {
-		"from": "now-1h",
+		"from": "now-5m",
 		"to": "now"
 	},
 	"timepicker": {},
 	"timezone": "",
 	"title": "Model Monitoring Dashboard2",
 	"uid": "model-monitoring2",
-	"version": 3
+	"version": 18,
+	"weekStart": ""
 }

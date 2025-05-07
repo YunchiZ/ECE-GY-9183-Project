@@ -1,189 +1,236 @@
 import prometheus_client as prom
-import threading
 import logging
+import time
+import threading
+from prometheus_client import start_http_server
+
+# dashboard
+
+# - 数据偏移
+# 输入长度频率分布
+# 分类标签频率变化
+# 数据质量
+
+# - 模型状态，阶段状态 文本 -----
+#
+# - 指标
+# metrics 折线图-----
+# 总响应时间ttlb  折线图----
+# service time 折线图-----
+# 模型推理时间  折线图 -----
+# 错误率-
 
 
 class UpdateAgent:
-    """
-    管理所有模型监控相关的Prometheus指标的类
-    """
 
-    def __init__(self):
-        """初始化所有Prometheus指标"""
-        # 设置日志
+    def __init__(self, port=9091):
         self.logger = logging.getLogger(__name__)
+        self.port = port
 
-        # 初始化所有Prometheus指标
+        start_http_server(self.port)
+        self.logger.info(f"Started Prometheus metrics server on port {self.port}")
 
-        # 模型状态指标 (0=normal, 1=shadow, 2=canary)
-        self.model_status = prom.Gauge(
-            "model_status", "Current model status", ["task_type", "model_name", "stage"]
+        self.word_length_counter = prom.Histogram(
+            "data_word_length",
+            "Length of input text data",
+            buckets=(50, 100, 250, 500, 1000),  # 改bucket大小
+        )
+        self.label_counter = prom.Gauge(
+            "data_label_frequency",
+            "Frequency of category labels",
+            ["label"],  # 标签维度
         )
 
-        # 模型性能指标
+        self.model_status = prom.Enum(
+            "model_deployment_status",
+            "Current deployment status of the model",
+            ["model_name"],
+            states=["canary", "shadow", "serving"],
+        )
+
         self.model_metrics = prom.Gauge(
             "model_metrics",
-            "Model performance metrics",
-            ["task_type", "model_name", "model_type"],
+            "Performance metrics for different models",
+            ["model_name", "metric_type"],
         )
 
-        # 错误率指标
-        self.error_rate = prom.Gauge(
-            "error_rate",
-            "Error rate of model predictions",
-            ["task_type", "model_name", "model_type"],
-        )
-
-        # 数据分布指标
-        self.data_distribution = prom.Gauge(
-            "data_distribution", "Data distribution shift metric", ["task_type"]
-        )
-
-        # 警告事件计数器
-        self.warning_events = prom.Counter(
-            "warning_events",
-            "Model warning events",
-            ["warning_type", "task_type", "model_name", "model_type"],
-        )
-
-        # 部署事件计数器
-        self.deployment_events = prom.Counter(
-            "deployment_events",
-            "Model deployment events",
-            ["task_type", "model_name", "event_type"],
-        )
-
-        # 容器状态指标
-        self.container_up = prom.Gauge(
-            "container_up", "Container up status", ["container"]
-        )
-
-        # 容器资源使用指标
-        self.container_cpu_usage = prom.Gauge(
-            "container_cpu_usage", "Container CPU usage percentage", ["container"]
-        )
-
-        self.container_memory_usage = prom.Gauge(
-            "container_memory_usage", "Container memory usage in MB", ["container"]
-        )
-
-        # 响应时间指标
         self.response_time = prom.Histogram(
-            "response_time",
-            "API response time in milliseconds",
-            ["task_type", "model_type"],
-            buckets=(50, 100, 200, 300, 500, 750, 1000, 1500, 2000, 3000),
+            "model_response_time",
+            "Response time of the model",
+            ["model_name"],
+            buckets=[0.1, 0.5, 1.0, 2.0, 5.0],  # 改bucket大小
+        )
+        self.service_time = prom.Histogram(
+            "model_service_time",
+            "Service time of the model",
+            ["model_name"],
+            buckets=[0.1, 0.5, 1.0, 2.0, 5.0],  # 改bucket大小
+        )
+        self.inference_time = prom.Histogram(
+            "model_inference_time",
+            "inference time of the model",
+            ["model_name"],
+            buckets=[0.1, 0.5, 1.0, 2.0, 5.0],  # 改bucket大小
         )
 
-        self.logger.info("Prometheus metrics initialized")
+    def update_word_length(self, word_counts):
+        """
+        word_counts [int,...]: 输入文本的长度列表
+        """
+        count = len(word_counts)
+        sum_value = sum(word_counts)
 
-    def update_model_status(self, task_type, model_name, stage, value):
-        """更新模型状态指标"""
-        with self._lock:
-            self.model_status.labels(
-                task_type=str(task_type), model_name=model_name, stage=stage
-            ).set(value)
-            self.logger.debug(
-                f"Updated model status for {model_name}, task {task_type}, stage {stage} to {value}"
-            )
+        self.logger.info(f"Updating word length with {count} samples")
+        # 直接使用直方图对象，不再调用.labels()
+        histogram = self.word_length_counter
 
-    def update_model_metrics(self, task_type, model_name, model_type, value):
-        """更新模型性能指标"""
-        with self._lock:
-            self.model_metrics.labels(
-                task_type=str(task_type), model_name=model_name, model_type=model_type
-            ).set(value)
-            self.logger.debug(
-                f"Updated metrics for {model_name}, task {task_type}, type {model_type} to {value}"
-            )
+        # 使用内部API批量更新（如果支持）
+        if hasattr(histogram, "_sum") and hasattr(histogram, "_count"):
+            histogram._sum.inc(sum_value)
+            histogram._count.inc(count)
 
-    def update_error_rate(self, task_type, model_name, model_type, value):
-        """更新错误率指标"""
-        with self._lock:
-            self.error_rate.labels(
-                task_type=str(task_type), model_name=model_name, model_type=model_type
-            ).set(value)
-            self.logger.debug(
-                f"Updated error rate for {model_name}, task {task_type}, type {model_type} to {value}"
-            )
+            # 更新各个bucket
+            for bucket_upper_bound in histogram._upper_bounds:
+                bucket_count = sum(1 for x in word_counts if x <= bucket_upper_bound)
+                histogram._buckets[bucket_upper_bound].inc(bucket_count)
+        else:
+            # 回退到逐个添加
+            for count in word_counts:
+                histogram.observe(count)
 
-    def update_data_distribution(self, task_type, value):
-        """更新数据分布指标"""
-        with self._lock:
-            self.data_distribution.labels(task_type=str(task_type)).set(value)
-            self.logger.debug(
-                f"Updated data distribution for task {task_type} to {value}"
-            )
-
-    def record_warning_event(self, warning_type, task_type, model_name, model_type):
-        """记录警告事件"""
-        with self._lock:
-            self.warning_events.labels(
-                warning_type=warning_type,
-                task_type=str(task_type),
-                model_name=model_name,
-                model_type=model_type,
-            ).inc()
-            self.logger.info(
-                f"Recorded warning: {warning_type} for {model_name} ({model_type}) on task {task_type}"
-            )
-
-    def update_container_status(self, container, is_up):
-        """更新容器状态指标"""
-        with self._lock:
-            self.container_up.labels(container=container).set(1 if is_up else 0)
-            self.logger.debug(f"Updated container status for {container} to {is_up}")
-
-    def update_container_resources(self, container, cpu_usage, memory_usage):
-        """更新容器资源使用指标"""
-        with self._lock:
-            self.container_cpu_usage.labels(container=container).set(cpu_usage)
-            self.container_memory_usage.labels(container=container).set(memory_usage)
-            self.logger.debug(
-                f"Updated resource usage for {container}: CPU {cpu_usage}%, Memory {memory_usage}MB"
-            )
-
-    def observe_response_time(self, task_type, model_type, response_time_ms):
-        """记录API响应时间"""
-        with self._lock:
-            self.response_time.labels(
-                task_type=str(task_type), model_type=model_type
-            ).observe(response_time_ms)
-            self.logger.debug(
-                f"Recorded response time for task {task_type}, type {model_type}: {response_time_ms}ms"
-            )
-
-    def observe_batch_processing_time(self, operation_type, processing_time_sec):
-        """记录批处理操作时间"""
-        with self._lock:
-            self.batch_processing_time.labels(operation_type=operation_type).observe(
-                processing_time_sec
-            )
-            self.logger.debug(
-                f"Recorded batch processing time for {operation_type}: {processing_time_sec}s"
-            )
-
-    def report_warning(self, warning_type, task_type, model_name, model_type):
-        """替代原report函数的方法
+    def update_model_status(self, model_name, status):
+        """
+        更新指定模型的部署状态
 
         参数:
-        warning_type - 警告类型 (data shift, excessive error, metric decay, etc)
-        task_type - 任务ID
-        model_name - 模型名称
-        model_type - 模型类型 (serving/candidate)
+            model_name (str): 模型名称
+            status (str): 模型状态，应为 'canary', 'shadow' 或 'serving' 之一
         """
+        if status not in ["canary", "shadow", "serving"]:
+            raise ValueError(
+                f"Status must be one of 'canary', 'shadow', 'serving', got '{status}'"
+            )
 
-        self.record_warning_event(warning_type, task_type, model_name, model_type)
+        self.logger.info(f"Updating model {model_name} status to {status}")
+        self.model_status.labels(model_name=model_name).state(status)
 
-        if warning_type == "data shift":
+    def update_model_metrics(self, task, model_name, value):
+        if task == 0:
+            self.model_metrics.labels(model_name=model_name, metric_type="ROUGE").set(
+                value
+            )
 
-            self.update_data_distribution(task_type, 0.7)
-        elif warning_type == "excessive error":
-            self.update_error_rate(task_type, model_name, model_type, 0.03)
+        elif task == 1 or task == 2:
+            self.model_metrics.labels(model_name=model_name, metric_type="ACC").set(
+                value
+            )
+        logging.info(f"Updating model {model_name} to {value}")
 
-        elif warning_type == "metric decay":  # TODO: 待解决
-            pass
-
+    def update_model_response_time(self, model_name, response_time):
         self.logger.info(
-            f"Reported {warning_type} warning for {model_name} ({model_type}) on task {task_type}"
+            f"Updating model {model_name} response time to {response_time}"
         )
+        self.response_time.labels(model_name=model_name).observe(response_time)
+
+    def update_model_service_time(self, model_name, service_time):
+        self.logger.info(f"Updating model {model_name} response time to {service_time}")
+        self.service_time.labels(model_name=model_name).observe(service_time)
+
+    def update_model_inference_time(self, model_name, inference_time):
+        self.logger.info(
+            f"Updating model {model_name} response time to {inference_time}"
+        )
+        self.inference_time.labels(model_name=model_name).observe(inference_time)
+
+    def update_label_frequency(self, labels_count):
+        """
+        更新标签频率
+        """
+        total = sum(labels_count.values())
+        if total == 0:
+            self.logger.warning("Total count of labels is zero, skipping update")
+            return
+        for label, count in labels_count.items():
+            self.label_counter.labels(label=label).set(count / total)
+
+            self.logger.info(f"Updating label frequency for {label} to {count/total}")
+
+
+def setup_logging():
+    """设置日志配置"""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.StreamHandler(),
+        ],
+    )
+
+
+def simulate_status_updates(agent: UpdateAgent):
+    """
+    模拟更新模型状态
+    """
+    models = ["model1", "model2", "model3"]
+    statuses = ["canary", "shadow", "serving"]
+
+    while True:
+        for model in models:
+
+            import random
+
+            status = random.choice(statuses)
+
+            # 更新状态
+            agent.update_model_status(model, status)
+            if model == "model1":
+                agent.update_model_metrics(0, model, random.uniform(0.5, 1.0))
+            elif model == "model2" or model == "model3":
+                agent.update_model_metrics(1, model, random.uniform(0.5, 1.0))
+
+            agent.update_model_response_time(model, random.uniform(0.1, 5.0))
+            agent.update_model_service_time(model, random.uniform(0.1, 5.0))
+            agent.update_model_inference_time(model, random.uniform(0.1, 5.0))
+
+            label1 = random.randint(1, 4)
+            label2 = random.randint(1, 4)
+            label3 = 10 - label1 - label2
+            agent.update_label_frequency(
+                {"label1": label1, "label2": label2, "label3": label3}
+            )
+            word_length = [random.randint(1, 1000) for _ in range(100)]
+            agent.update_word_length(word_length)
+        time.sleep(5)
+
+
+if __name__ == "__main__":
+    # 设置日志
+    setup_logging()
+    logger = logging.getLogger("main")
+
+    # 创建代理实例，指定Prometheus服务器端口
+    agent = UpdateAgent(port=9991)
+
+    # 初始设置所有模型状态
+    agent.update_model_status("model1", "canary")
+    agent.update_model_status("model2", "shadow")
+    agent.update_model_status("model3", "serving")
+
+    logger.info("Initial model statuses set")
+
+    try:
+        # 创建并启动一个线程来模拟状态更新
+        update_thread = threading.Thread(
+            target=simulate_status_updates,
+            args=(agent,),
+            daemon=True,  # 设置为守护线程，这样主程序退出时线程也会退出
+        )
+        update_thread.start()
+
+        logger.info("Status update simulation started")
+
+        while True:
+            time.sleep(1)
+
+    except KeyboardInterrupt:
+        logger.info("Program terminated by user")
