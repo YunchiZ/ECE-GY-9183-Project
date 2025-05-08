@@ -1,7 +1,7 @@
 import os
 import logging
 from flask import Flask, request
-from prometheus_client import Counter, Gauge, start_http_server
+from prometheus_client import Counter, Gauge, start_http_server, generate_latest
 import time
 import json
 import pandas as pd
@@ -16,13 +16,13 @@ data_quality_duplicates = Gauge('data_quality_duplicates', 'Number of duplicate 
 data_quality_processing_errors = Counter('data_quality_processing_errors', 'Number of data processing errors', ['task', 'error_type'])
 
 # 数据目录配置 待修改...
-DEPLOY_DATA_DIR = '/app/deploy_data'  # 容器内的部署数据目录
-PROCESSED_DATA_DIR = '/app/processed_data'  # 容器内的处理后数据目录
+MONITOR_DATA_DIR = '/app/monitor_data'  # 容器内的部署数据目录
+PROCESSED_DATA_DIR = '/app/etl_data'  # 容器内的处理后数据目录
 etl_data_dir = '/app/etl_data'  # ETL 工作目录
 log_file = os.path.join(etl_data_dir, "app.log")
 
 # 确保目录存在
-os.makedirs(DEPLOY_DATA_DIR, exist_ok=True)
+os.makedirs(MONITOR_DATA_DIR, exist_ok=True)
 os.makedirs(PROCESSED_DATA_DIR, exist_ok=True)
 os.makedirs(etl_data_dir, exist_ok=True)
 
@@ -33,6 +33,9 @@ logging.basicConfig(
 )
 
 app = Flask(__name__)
+
+# 启动 Prometheus 指标服务器
+start_http_server(8001)
 
 def clean_text(df):
     df.dropna(inplace=True)
@@ -105,11 +108,11 @@ def save_to_volume(data, filepath):
         logging.error(f"Error saving to volume: {str(e)}")
         return False
 
-def read_from_deploy_volume(task_id):
+def read_from_monitor_volume(task_id):
     """从部署数据卷读取数据"""
     try:
         # 构建文件路径
-        file_path = os.path.join(DEPLOY_DATA_DIR, f"task{task_id}/evaluation.json")
+        file_path = os.path.join(MONITOR_DATA_DIR, f"task{task_id}/evaluation.json")
         
         # 读取 JSON 文件
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -117,7 +120,7 @@ def read_from_deploy_volume(task_id):
         
         return data
     except Exception as e:
-        logging.error(f"Error reading from deploy volume: {str(e)}")
+        logging.error(f"Error reading from monitor volume: {str(e)}")
         return None
 
 def process_online_evaluation(task_id, data):
@@ -150,41 +153,38 @@ def trigger_etl():
         return {"error": "Missing task field"}, 400
 
     try:
-        task_id = int(task.replace("task", ""))
-        if 1 <= task_id <= 3:
+        # 处理所有三个任务
+        for task_id in range(1, 4):
             # 从部署数据卷读取数据
-            evaluation_data = read_from_deploy_volume(task_id)
+            evaluation_data = read_from_monitor_volume(task_id)
             if evaluation_data is None:
-                return {"error": "Failed to read evaluation data"}, 500
+                logging.error(f"Failed to read evaluation data for task {task_id}")
+                continue  # 继续处理下一个任务
 
             # 处理数据
             success = process_online_evaluation(task_id, evaluation_data)
             if not success:
-                return {"error": "Failed to process evaluation data"}, 500
+                logging.error(f"Failed to process evaluation data for task {task_id}")
+                continue  # 继续处理下一个任务
                 
             # ETL 成功后触发 train 服务
             try:
                 train_response = requests.post(
                     "http://train:8000/train",
-                    json={"task": task},
+                    json={"task": f"task{task_id}"},  # 传递对应的任务ID
                     timeout=5
                 )
                 if train_response.status_code != 200:
-                    logging.error(f"Failed to trigger train service: {train_response.text}")
-                    return {"status": "ETL success but train trigger failed", "task": task}, 200
+                    logging.error(f"Failed to trigger train service for task {task_id}: {train_response.text}")
             except Exception as e:
-                logging.error(f"Error triggering train service: {str(e)}")
-                return {"status": "ETL success but train trigger failed", "task": task}, 200
-        else:
-            return {"error": "Invalid task ID for evaluation"}, 400
+                logging.error(f"Error triggering train service for task {task_id}: {str(e)}")
+
+        return {"status": "ETL process completed for all tasks", "task": task}, 200
     except Exception as e:
         logging.exception("ETL failed")
         return {"error": str(e)}, 500
 
-    return {"status": "ETL success and train triggered", "task": task}, 200
-
-if __name__ == "__main__":
-    # 启动 Prometheus 指标服务器
-    start_http_server(8001)
-    # 启动 Flask 应用
-    app.run(host="0.0.0.0", port=8000)
+@app.route("/metrics", methods=["GET"])
+def metrics():
+    """暴露 Prometheus 指标"""
+    return generate_latest(), 200, {'Content-Type': 'text/plain'}    # text指定返回类型为纯文本
