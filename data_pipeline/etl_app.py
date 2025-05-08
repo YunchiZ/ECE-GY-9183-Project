@@ -131,8 +131,7 @@ def process_online_evaluation(task_id, data):
             return False
         
         # 生成文件路径
-        timestamp = int(time.time())
-        file_path = f"task{task_id}/evaluation_{timestamp}.json"
+        file_path = f"task{task_id}/evaluation.json"
         full_path = os.path.join(PROCESSED_DATA_DIR, file_path)
         
         # 保存到挂载卷
