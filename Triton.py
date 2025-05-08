@@ -8,8 +8,8 @@ INFER_URL_TMPL  = TRITON_HOST + "/v2/models/{model}/versions/{ver}/infer"
 REPO_URL_TMPL   = TRITON_HOST + "/v2/repository/models/{model}/{action}"
 READY_URL_TMPL  = TRITON_HOST + "/v2/models/{model}{ver_part}/ready"
 
-DEFAULT_INFER_TIMEOUT   = 1.5     # 单次推理最长等待
-DEFAULT_MODEL_TIMEOUT   = 120     # wait_until_ready 最长等待
+DEFAULT_INFER_TIMEOUT   = 1.5     # Maximum wait time for a single inference
+DEFAULT_MODEL_TIMEOUT   = 120     # Maximum wait time for `wait_until_ready`
 
 
 def _mk_timeout(read: float) -> httpx.Timeout:
@@ -21,7 +21,7 @@ async def triton_infer(model: str,
                        payload: Dict[str, Any],
                        timeout: float = DEFAULT_INFER_TIMEOUT) -> Optional[dict]:
     """
-    发送推理请求；成功返回 Triton JSON，失败返回 None。
+    Send an inference request; returns Triton JSON on success, None on failure.
     """
     url = INFER_URL_TMPL.format(model=model, ver=version)
     try:
@@ -42,8 +42,8 @@ async def triton_infer(model: str,
     return None
 
 
-# API调用时传入信息的简单校验: 1000单词*12字符/单词 = 12000字符最多
-# Triton的标准返回形式:
+# Simple validation of information passed during API calls: 1000 words * 12 characters/word = max 12000 characters
+# Standard Triton response format:
 '''
 {
   "model_name": "bert_v1",
@@ -66,7 +66,7 @@ async def triton_config(model_name: str,
                         timeout: int = DEFAULT_MODEL_TIMEOUT) -> None:
     """
     action = "load" / "unload"
-    等待模型 READY 最长 *timeout* 秒。
+    Wait for the model to be READY for up to *timeout* seconds.
     """
     if action not in ("load", "unload"):
         raise ValueError("action must be 'load' or 'unload'")
@@ -77,24 +77,24 @@ async def triton_config(model_name: str,
     elif isinstance(version, int):
         ver_str = str(version)
     else:  # str
-        ver_str = version.strip() or None  # 空串视为 None
+        ver_str = version.strip() or None  # Empty string is treated as None
     if ver_str is not None:
         body["parameters"] = {"version": ver_str}
 
     timeout_obj = _mk_timeout(read=10.0)
     async with httpx.AsyncClient(timeout=timeout_obj) as client:
-        # ① 发送 load / unload 指令
+        # ① Send load/unload command
         url = REPO_URL_TMPL.format(model=model_name, action=action)
         r = await client.post(url, json=body)
         r.raise_for_status()
         logging.info("[Triton] %s %s:%s accepted",
                      action, model_name, ver_str or "<policy>")
 
-        # ② unload 或无需等待 ready
+        # ② For unload or if there's no need to wait for ready
         if action == "unload" or not wait_until_ready:
             return
 
-        # ③ 轮询 /ready
+        # ③ Poll /ready
         ver_part = f"/versions/{ver_str}" if ver_str is not None else ""
         ready_url = READY_URL_TMPL.format(model=model_name, ver_part=ver_part)
 
@@ -115,9 +115,7 @@ async def triton_config(model_name: str,
 # Load Test
 def _parse_p95(stdout: str) -> float:
     """
-    从 perf_analyzer stdout 中提取 P95 latency（单位 ms）
-    Example line:
-      95th percentile latency (ns):  4287360
+    Extract P95 latency (in ms) from perf_analyzer stdout.
     """
     m = re.search(r"95th percentile latency.*?:\s+(\d+)", stdout)
     return int(m.group(1)) / 1e6 if m else 1e9   # ns→ms
@@ -127,7 +125,7 @@ def load_test(model_tag: str,
               batch_sizes=(1, 4, 8),
               concurrencies=(1, 4, 8),
               p95_budget_ms: int = 500) -> bool:
-    """True = 通过；False = 淘汰"""
+    """True = Pass; False = Fail"""
     if shutil.which("perf_analyzer") is None:
         logging.error("perf_analyzer not found in PATH")
         return False

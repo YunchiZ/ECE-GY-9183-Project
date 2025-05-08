@@ -13,18 +13,18 @@ def _ensure_dir(path: str) -> None:
 
 
 def _open_conn(db_path: str) -> sqlite3.Connection:
-    """带 WAL + busy_timeout 的统一打开方式"""
+    """Unified open method with WAL + busy_timeout"""
     conn = sqlite3.connect(db_path, timeout=30, isolation_level=None)  # autocommit
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA busy_timeout = 5000;")        # ms
     return conn
 
 
-# ---------- 1. 初始化 ----------
+# ---------- 1. Initialization ----------
 
 def init_db() -> None:
     """
-    预创建 serving.db / candidate.db，每个含 task0~2 三张表。
+    Pre-create `serving.db` and `candidate.db`, each containing three tables: task0~2.
     """
     _ensure_dir(DEPLOY_DATA_DIR)
 
@@ -110,7 +110,7 @@ def batch_write(records: List[Dict[str, Any]],
         VALUES (?, ?, ?, ?)
     """
 
-    # ---------- 整理数据 ----------
+    # ---------- Organize Data ----------
     data: list[tuple] = []
     for item in records:
         try:
@@ -133,7 +133,7 @@ def batch_write(records: List[Dict[str, Any]],
         logging.warning("batch_write: no valid rows for %s", table)
         return
 
-    # ---------- 写入 + 重试 ----------
+    # ---------- Write + Retry ----------
     for attempt in range(1, retries + 1):
         try:
             with _open_conn(db_path) as conn:
@@ -156,7 +156,6 @@ def batch_write(records: List[Dict[str, Any]],
             break
 
     logging.error("batch_write: give up after %d retries on %s", retries, table)
-
 
 
 
