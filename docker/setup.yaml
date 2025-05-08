@@ -9,8 +9,8 @@ services:
       - "8001:8001"  # Prometheus 指标端口
     volumes:
       - ./:/app  # 代码目录
-      - /mnt/vdb/raw_data:/app/deploy_data  # 使用 bind mount 挂载块存储
-      - /mnt/vdb/output:/app/processed_data  # 使用 bind mount 挂载块存储
+      - /mnt/vdb/raw_data:/app/monitor_data  # 使用 bind mount 挂载块存储
+      - /mnt/vdb/output:/app/etl_data  # 使用 bind mount 挂载块存储
       - etl_data:/app/etl_data  # ETL 工作目录
     environment:
       - TZ=Asia/Shanghai  # 时区设置
