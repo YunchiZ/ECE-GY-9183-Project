@@ -18,7 +18,9 @@ from filelock import FileLock
 import pytest
 import subprocess
 from datetime import datetime
-
+from peft import get_peft_model, LoraConfig, TaskType
+from transformers.onnx import export
+from transformers.onnx.features import FeaturesManager
 
 max_input_length = 1024
 max_target_length = 128
@@ -125,7 +127,7 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         # gradient_accumulation_steps=config["gradient_accumulation_steps"],               # Hyperparameter from Ray Tune
 
         per_device_train_batch_size=8,
-        per_device_eval_batch_size=8,
+        per_device_eval_batch_size=2,
         gradient_accumulation_steps=4,
         
         learning_rate=config["learning_rate"],              # Hyperparameter from Ray Tune
@@ -140,6 +142,7 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         metric_for_best_model="rougeL",
         fp16=True,
     )
+
 
     trainer = Trainer(
         model=model, 
@@ -179,24 +182,52 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
     except Exception as e:
         print(f"报告错误: {str(e)}")
         raise
-
-    
-
-
-
-
         
 def get_next_model_version(base_dir="model"):
-    base_path = Path(base_dir)
-    base_path.mkdir(exist_ok=True)  # 创建 model 文件夹（如果不存在）
+    # train_dir = Path(__file__).resolve().parent.parent
+    # base_path = train_dir / "model/BART"
+    # base_path.mkdir(parents=True, exist_ok=True)
+    
+    # existing_versions = [
+    #     int(p.name.replace("BART-v", ""))
+    #     for p in base_path.iterdir()
+    #     if p.is_dir() and p.name.startswith("BART-v") and p.name.replace("BART-v", "").isdigit()
+    # ]
+    # next_version = max(existing_versions + [-1]) + 1  # 如果不存在则为 v0
 
-    existing_versions = [
-        int(p.name.replace("BART-v", ""))
-        for p in base_path.iterdir()
-        if p.is_dir() and p.name.startswith("BART-v") and p.name.replace("BART-v", "").isdigit()
-    ]
-    next_version = max(existing_versions + [-1]) + 1  # 如果不存在则为 v0
-    return f"BART-v{next_version}", base_path / f"BART-v{next_version}"
+    task_id = "0"
+
+    current_dir = Path(__file__).resolve().parent
+    parent_dir = current_dir.parent
+    status_path = parent_dir / "model/model_status.json"
+    
+    lock_path = status_path.with_suffix(".lock")
+    lock = FileLock(str(lock_path))
+    with lock:
+        if not status_path.exists():
+            return None  # 没有记录
+
+        try:
+            with status_path.open("r") as f:
+                model_status = json.load(f)
+        except json.JSONDecodeError:
+            return None
+
+        if task_id not in model_status or not model_status[task_id]:
+            return None
+
+        versions = []
+        for entry in model_status[task_id]:
+            model_name = entry.get("model", "")
+            if model_name.startswith("BART-v"):
+                try:
+                    version_num = int(model_name.replace("BART-v", ""))
+                    versions.append(version_num)
+                except ValueError:
+                    continue
+
+        return max(versions) if versions else -1
+    # return f"BART-v{next_version}", base_path / f"BART-v{next_version}"
 
 
 
@@ -205,7 +236,7 @@ def update_model_status(new_model_name):
     
     current_dir = Path(__file__).resolve().parent
     parent_dir = current_dir.parent
-    status_path = parent_dir / "model_status.json"
+    status_path = parent_dir / "model/model_status.json"
     
     lock_path = status_path.with_suffix(".lock")
     lock = FileLock(str(lock_path))
@@ -249,6 +280,147 @@ def evaluate_offline():
     ])
     return retcode
 
+def export_model_to_onnx(model, tokenizer, output_path, model_name):
+    """
+    Export a model to ONNX format, handling different possible scenarios and APIs.
+    
+    Args:
+        model: The model to export
+        tokenizer: The tokenizer for the model
+        output_path: The path to save the ONNX model. Can be a directory or file.
+        
+    Returns:
+        The path to the saved ONNX file
+    """
+    import os
+    
+    # Fix output path - ensure it points to a file, not a directory
+    if os.path.isdir(output_path):
+        output_file = os.path.join(output_path, f"{model_name}.onnx")
+    else:
+        output_file = output_path
+        
+    # Ensure parent directory exists
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    
+    print(f"Will export to: {output_file}")
+    
+    # Try all methods in order until one succeeds
+    methods = [
+        export_with_transformers_api,
+        export_with_direct_torch
+    ]
+    
+    last_error = None
+    for method in methods:
+        try:
+            print(f"Trying export method: {method.__name__}")
+            result = method(model, tokenizer, output_file)
+            if result:
+                return result
+        except Exception as e:
+            print(f"Method {method.__name__} failed: {e}")
+            last_error = e
+            import traceback
+            traceback.print_exc()
+    
+    # If we get here, all methods failed
+    raise RuntimeError(f"All ONNX export methods failed. Last error: {last_error}")
+
+
+def export_with_transformers_api(model, tokenizer, output_file):
+    """Try exporting with the transformers ONNX API"""
+    try:
+        from transformers.onnx import export
+        from transformers.onnx.features import FeaturesManager
+        from pathlib import Path
+        
+        # Set model to evaluation mode
+        model.eval()
+        
+        # Get model type
+        model_type = model.config.model_type
+        
+        # Check which methods are available in FeaturesManager
+        print("Available FeaturesManager methods:")
+        for method in dir(FeaturesManager):
+            if not method.startswith("_"):
+                print(f"- {method}")
+        
+        # Try the get_config method (used in newer versions)
+        if hasattr(FeaturesManager, "get_config"):
+            onnx_config = FeaturesManager.get_config(
+                model_type=model_type,
+                task="seq2seq-lm"  # For BART which is a seq2seq model
+            )
+            
+            # Export using the config
+            export(
+                tokenizer=tokenizer,  # Use tokenizer parameter
+                model=model,
+                config=onnx_config,
+                opset=14,
+                output=Path(output_file)
+            )
+            
+            print(f"✅ Export successful using transformers API with get_config!")
+            return output_file
+            
+        # If the above doesn't work, try alternative approaches
+        print("Trying alternative transformers export approaches...")
+        return None
+        
+    except Exception as e:
+        print(f"Transformers API export failed: {e}")
+        return None
+
+
+def export_with_direct_torch(model, tokenizer, output_file):
+    """Export the model directly using torch.onnx"""
+    try:
+        import torch
+        
+        # Set the model to evaluation mode
+        model.eval()
+        
+        # Create sample inputs
+        sample_text = "This is a sample text for ONNX export."
+        inputs = tokenizer(sample_text, return_tensors="pt")
+        
+        # For seq2seq models, we need decoder inputs
+        decoder_input_ids = torch.tensor([[model.config.decoder_start_token_id]])
+        
+        # Define dynamic axes for variable input sizes
+        dynamic_axes = {
+            'input_ids': {0: 'batch_size', 1: 'sequence'},
+            'attention_mask': {0: 'batch_size', 1: 'sequence'},
+            'decoder_input_ids': {0: 'batch_size', 1: 'decoder_sequence'}
+        }
+        
+        # Export directly using torch.onnx
+        with torch.no_grad():
+            torch.onnx.export(
+                model,
+                (
+                    inputs.input_ids,
+                    inputs.attention_mask,
+                    decoder_input_ids
+                ),
+                output_file,
+                input_names=['input_ids', 'attention_mask', 'decoder_input_ids'],
+                output_names=['logits'],
+                dynamic_axes=dynamic_axes,
+                opset_version=14,
+                do_constant_folding=True,
+                export_params=True
+            )
+        
+        print(f"✅ Export successful using torch.onnx! Saved to: {output_file}")
+        return output_file
+        
+    except Exception as e:
+        print(f"Direct torch export failed: {e}")
+        return None
 
 if __name__ == '__main__':
 
@@ -277,6 +449,17 @@ if __name__ == '__main__':
     for param in model.model.decoder.parameters():
         param.requires_grad = True
 
+    lora_config = LoraConfig(
+        r=8,
+        lora_alpha=32,
+        target_modules=["q_proj", "v_proj"],
+        lora_dropout=0.1,
+        bias="none",
+        task_type=TaskType.SEQ_2_SEQ_LM
+    )
+    
+    model = get_peft_model(model, lora_config)
+
     # 应用预处理函数时，仅移除不需要的列（如果有）
     tokenized_datasets = dataset.map(
         preprocess_function,
@@ -284,27 +467,36 @@ if __name__ == '__main__':
         remove_columns=[]
     )
 
-    train_size = 1000  # You can adjust this number to use fewer examples
-    eval_size = 200  # Same for evaluation dataset
+    train_size = 100  # use fewer examples
+    eval_size = 20
 
     train_subset = tokenized_datasets["train"].select(range(train_size))
     eval_subset = tokenized_datasets["validation"].select(range(eval_size))
 
+    # train_subset = tokenized_datasets["train"]
+    # eval_subset = tokenized_datasets["validation"]
+    
     search_space = {
         # "learning_rate": tune.grid_search([1e-5, 2e-5, 5e-5]),
         # "batch_size": tune.choice([8, 16]),
         # "warmup_steps": tune.choice([500, 1000, 2000]),
-        "learning_rate": tune.grid_search([1e-5, 2e-5]),
+        "learning_rate": tune.grid_search([1e-5]),
     }
 
-    # wandb.init(project="Mlops-summary", entity="yunchiz-new-york-university")
-    model_name, save_path = get_next_model_version()
+    model_id = get_next_model_version() + 1
+    
+    train_dir = Path(__file__).resolve().parent.parent
+    save_path = train_dir / f"model/BART/{model_id}"
+    save_path.mkdir(parents=True, exist_ok=True)
+    model_name = f"BART-v{model_id}"
+    
+    
     run_name = f"{model_name}_{datetime.now().strftime('%m%d_%H%M')}"
     os.environ["WANDB_PROJECT"] = "Mlops-summary"
     os.environ["WANDB_DISABLED"] = "false"
 
     current_dir = os.getcwd()
-    storage_path = f"file://{current_dir}/ray_results"
+    storage_path = f"file://{current_dir}/ray_results/summary_results"
 
     train_fn_with_params = tune.with_parameters(train_fn, model=model, train_dataset=train_subset, eval_dataset=eval_subset, run_name = run_name)
     ray.init(ignore_reinit_error=True)  # Initialize Ray
@@ -319,7 +511,7 @@ if __name__ == '__main__':
         callbacks=[],
     )
 
-    test_size = 200  # Same for evaluation dataset
+    test_size = 20  # Same for evaluation dataset
     test_dataset = tokenized_datasets["test"].select(range(test_size))
 
     best_trial = analysis.get_best_trial(metric="eval_rougeL", mode="max")
@@ -337,7 +529,10 @@ if __name__ == '__main__':
     if retcode != 0:
         print("test failed")
     else:
-        best_model.save_pretrained(save_path)
-        print(f"new model: {model_name} + {save_path}")
+        # best_model.save_pretrained(save_path)
+        onnx_path = export_model_to_onnx(best_model, tokenizer, save_path, model_name)
+        print(f"New model exported: {model_name}, path: {onnx_path}")
+        # print(f"new model: {model_name} + {save_path}")
         update_model_status(model_name)
+        print(model_name)
     wandb.finish()
