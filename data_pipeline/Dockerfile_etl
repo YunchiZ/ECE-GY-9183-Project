@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY etl_app.py .
 
 # 创建必要的目录
-RUN mkdir -p  /app/processed_data /app/etl_data
+RUN mkdir -p  /app/etl_data
 
 # 暴露端口
 EXPOSE 8000 8001
