@@ -386,16 +386,6 @@ if __name__ == '__main__':
     model_name = "facebook/bart-base"
     tokenizer = BartTokenizer.from_pretrained(model_name, cache_dir=save_path)
     model = BartForConditionalGeneration.from_pretrained(model_name, cache_dir=save_path)
-
-
-    ## autodl vpn
-    result = subprocess.run('bash -c "source /etc/network_turbo && env | grep proxy"', shell=True, capture_output=True, text=True)
-    output = result.stdout
-    for line in output.splitlines():
-        if '=' in line:
-            var, value = line.split('=', 1)
-            os.environ[var] = value
-
     
     # 冻结编码器部分的所有层
     for param in model.model.encoder.parameters():
