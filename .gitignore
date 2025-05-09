@@ -1,21 +1,21 @@
 # summmary
-summarize/dataset
-summarize/model
-summarize/wandb
-summarize/results
+train/summarize/dataset
+train/summarize/model
+train/summarize/wandb
+train/summarize/results
 
 
 # classification
-classification/dataset
-classification/model
-classification/wandb
-classification/results
+train/classification/dataset
+train/classification/model
+train/classification/wandb
+train/classification/results
 
 
 
 # fake news
-fake/dataset
-fake/model
+train/fake/dataset
+train/fake/model
 
 
 .DS_Store
