@@ -11,12 +11,9 @@ services:
     ports:
       - "8001:8000"
     environment:
-      MLFLOW_TRACKING_URI: http://mlflow:8000
-      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
       WANDB_API_KEY: 6152575167d0e4509e925806279765771edac7e4
     depends_on:
       - etl
-      - mlflow
     networks:
       - mlops-network
 
@@ -29,16 +26,23 @@ services:
     networks:
       - mlops-network
 
-  mlflow:
-    image: mlflow:latest
-    ports:
-      - "8000:8000"
-    networks:
-      - mlops-network
-
 networks:
   mlops-network:
     driver: bridge
+
+    # networks:
+    #   - mlops-network
+
+  # mlflow:
+  #   image: mlflow:latest
+  #   ports:
+  #     - "8000:8000"
+  #   networks:
+  #     - mlops-network
+
+# networks:
+#   mlops-network:
+#     driver: bridge
 
 
 
