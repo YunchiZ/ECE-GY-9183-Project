@@ -20,19 +20,28 @@ services:
     networks:
       - mlops-network
 
+  etl:
+    build:
+      context: ./etl
+    container_name: etl-container
+    volumes:
+      - ./etl_data:/app/etl_data
+    networks:
+      - mlops-network
+
+  mlflow:
+    image: mlflow:latest
+    ports:
+      - "8000:8000"
+    networks:
+      - mlops-network
+
 networks:
   mlops-network:
     driver: bridge
 
-#   etl:
-#     image: python:3.10-slim
-#     container_name: etl
-#     command: tail -f /dev/null  # 模拟运行状态，可换成实际 ETL 脚本
-#     volumes:
-#       - ./etl:/app
-#     working_dir: /app
-#     networks:
-#       - mlnet
+
+
 
 #   train:
 #     build: ./train
