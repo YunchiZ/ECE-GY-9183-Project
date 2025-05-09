@@ -1,0 +1,72 @@
+version: "3"
+
+volumes:
+    prometheus-data:
+        driver: local
+    grafana-data:
+        driver: local
+
+networks:
+    monitoring:
+        driver: bridge
+
+services:
+    prometheus:
+        image: prom/prometheus:latest
+        container_name: prometheus
+        ports:
+            - "9090:9090"
+        volumes:
+            - ./prometheus.yaml:/etc/prometheus/prometheus.yaml
+            - prometheus-data:/prometheus
+        restart: unless-stopped
+        command:
+            - "--config.file=/etc/prometheus/prometheus.yaml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--storage.tsdb.retention.time=15d"
+        networks:
+            - monitoring
+
+    grafana:
+        image: grafana/grafana:latest
+        container_name: grafana
+        ports:
+            - "3000:3000"
+        volumes:
+            - grafana-data:/var/lib/grafana
+            - ./grafana/dashboards:/var/lib/grafana/dashboards
+            - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+        restart: unless-stopped
+        environment:
+            - GF_SECURITY_ADMIN_USER=admin
+            - GF_SECURITY_ADMIN_PASSWORD=admin
+            - GF_USERS_ALLOW_SIGN_UP=false
+        networks:
+            - monitoring
+
+    node_exporter:
+        image: quay.io/prometheus/node-exporter:latest
+        container_name: node_exporter
+        command:
+            - "--path.rootfs=/host"
+        pid: host
+        restart: unless-stopped
+        volumes:
+            - "/:/host:ro"
+        networks:
+            - monitoring
+
+    cadvisor:
+        image: gcr.io/cadvisor/cadvisor:latest
+        container_name: cadvisor
+        volumes:
+            - /:/rootfs:ro
+            - /var/run:/var/run:ro
+            - /sys:/sys:ro
+            - /var/lib/docker/:/var/lib/docker:ro
+            - /dev/disk/:/dev/disk:ro
+        devices:
+            - /dev/kmsg
+        restart: unless-stopped
+        networks:
+            - monitoring
