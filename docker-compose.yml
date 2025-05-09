@@ -3,13 +3,13 @@ version: "3.8"
 services:
   train:
     build:
-      context: ./train  # 假设你的代码在 train/ 子目录
+      context: ./train
     container_name: train-container
     volumes:
       - ./etl_data:/app/etl_data
       - ./model:/app/models
     ports:
-      - "8001:8000" 
+      - "8001:8000"
     environment:
       MLFLOW_TRACKING_URI: http://mlflow:8000
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
@@ -19,6 +19,11 @@ services:
       - mlflow
     networks:
       - mlops-network
+
+networks:
+  mlops-network:
+    driver: bridge
+
 #   etl:
 #     image: python:3.10-slim
 #     container_name: etl
