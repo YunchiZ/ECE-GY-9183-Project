@@ -117,12 +117,14 @@ nvidia-cusparse-cu12==12.3.1.170
 nvidia-nccl-cu12==2.21.5
 nvidia-nvjitlink-cu12==12.4.127
 nvidia-nvtx-cu12==12.4.127
+onnx==1.17.0
 opentelemetry-proto==1.32.0
 overrides==7.7.0
 packaging==23.2
 pandas==2.2.3
 pandocfilters==1.5.1
 parso==0.8.4
+peft==0.15.2
 pexpect==4.9.0
 pillow==11.0.0
 pip==24.0

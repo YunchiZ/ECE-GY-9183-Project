@@ -378,7 +378,7 @@ if __name__ == '__main__':
     train_dir = Path(__file__).resolve().parent.parent
 
     # save_path = './dataset'
-    data_path = train_dir / "model/bart_source"
+    # data_path = train_dir / "model/bart_source"
     save_path = train_dir / "model/bart_source"
 
     dataset = load_dataset('abisee/cnn_dailymail', '3.0.0', cache_dir=save_path)

@@ -9,10 +9,8 @@ from transformers import XLNetForSequenceClassification, TrainingArguments, Trai
 import numpy as np
 from sklearn.metrics import accuracy_score, f1_score
 import torch
-
 import os
 os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1"
-
 from ray.air import session
 import ray
 from ray import tune
@@ -24,8 +22,6 @@ import subprocess
 from datetime import datetime
 from transformers.onnx import export
 from transformers.onnx.features import FeaturesManager
-from transformers import TrainerCallback
-
 
 def preprocess(examples):
     return tokenizer(
@@ -35,8 +31,6 @@ def preprocess(examples):
         max_length=256,
         return_tensors="pt"
     )
-
-
 
 def compute_metrics(eval_pred):
     predictions, labels = eval_pred
@@ -50,8 +44,6 @@ def compute_metrics(eval_pred):
         'accuracy': accuracy,
         'f1': f1,
     }
-
-
 
 def train_fn(config, model, train_dataset, eval_dataset, run_name):
     trial_id = session.get_trial_name()
@@ -132,7 +124,6 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         raise
 
 def get_next_model_version(base_dir="model"):
-
     task_id = "1"
 
     current_dir = Path(__file__).resolve().parent
@@ -266,15 +257,7 @@ def export_model_to_onnx(model, tokenizer, output_path, model_name):
 
 # Alternative export method using the transformers API
 def export_with_transformers_api(model, tokenizer, output_file):
-    """
-    Try exporting with the transformers ONNX API
-    Only use this as a fallback if the direct torch method fails
-    """
     try:
-        from transformers.onnx import export
-        from transformers.onnx.features import FeaturesManager
-        from pathlib import Path
-        
         # Set model to evaluation mode
         model.eval()
         
