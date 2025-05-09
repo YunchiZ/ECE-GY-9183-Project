@@ -2,13 +2,28 @@
 	"__inputs": [
 		{
 			"name": "DS_PROMETHEUS",
-			"label": "prometheus",
+			"label": "Prometheus",
 			"description": "",
 			"type": "datasource",
 			"pluginId": "prometheus",
 			"pluginName": "Prometheus"
 		}
 	],
+	"templating": {
+		"list": [
+			{
+				"current": {
+					"selected": true,
+					"text": "Prometheus",
+					"value": "Prometheus"
+				},
+				"name": "DS_PROMETHEUS",
+				"options": [],
+				"query": "prometheus",
+				"type": "datasource"
+			}
+		]
+	},
 	"__elements": {},
 	"__requires": [
 		{
@@ -163,15 +178,15 @@
 			"pluginVersion": "11.6.0",
 			"targets": [
 				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
 					"editorMode": "code",
 					"expr": "sum(rate(data_word_length_bucket{le=\"50.0\"}[1h])) / sum(rate(data_word_length_count[1h]))",
 					"legendFormat": "0-50",
 					"range": true,
-					"refId": "A",
-					"datasource": {
-						"type": "prometheus",
-						"uid": "${DS_PROMETHEUS}"
-					}
+					"refId": "A"
 				},
 				{
 					"datasource": {
@@ -435,11 +450,24 @@
 					},
 					"unit": "string"
 				},
-				"overrides": []
+				"overrides": [
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "candidate_model_info 1"
+						},
+						"properties": [
+							{
+								"id": "custom.width",
+								"value": 207
+							}
+						]
+					}
+				]
 			},
 			"gridPos": {
-				"h": 5,
-				"w": 24,
+				"h": 6,
+				"w": 16,
 				"x": 0,
 				"y": 22
 			},
@@ -452,13 +480,9 @@
 					"reducer": ["sum"],
 					"show": false
 				},
+				"frameIndex": 0,
 				"showHeader": true,
-				"sortBy": [
-					{
-						"desc": true,
-						"displayName": "model1"
-					}
-				]
+				"sortBy": []
 			},
 			"pluginVersion": "11.6.0",
 			"targets": [
@@ -468,11 +492,122 @@
 						"uid": "${DS_PROMETHEUS}"
 					},
 					"editorMode": "code",
-					"expr": "model_deployment_status",
+					"expr": "topk(1,task_stage_info{task=\"task1\"}) ",
+					"hide": false,
 					"instant": true,
 					"interval": "",
 					"legendFormat": "{{model_name}}",
 					"refId": "A"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"exemplar": false,
+					"expr": "topk(1,candidate_model_info{task=\"task1\"})",
+					"hide": false,
+					"instant": true,
+					"legendFormat": "__auto",
+					"range": false,
+					"refId": "B"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"exemplar": false,
+					"expr": "topk(1,serving_model_info{task=\"task1\"})",
+					"hide": false,
+					"instant": true,
+					"legendFormat": "__auto",
+					"range": false,
+					"refId": "C"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "topk(1,task_stage_info{task=\"task2\"}) ",
+					"hide": false,
+					"instant": true,
+					"interval": "",
+					"legendFormat": "{{model_name}}",
+					"refId": "E"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "topk(1,task_stage_info{task=\"task3\"}) ",
+					"hide": false,
+					"instant": true,
+					"interval": "",
+					"legendFormat": "{{model_name}}",
+					"refId": "F"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"exemplar": false,
+					"expr": "topk(1,candidate_model_info{task=\"task2\"})",
+					"hide": false,
+					"instant": true,
+					"legendFormat": "__auto",
+					"range": false,
+					"refId": "G"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"exemplar": false,
+					"expr": "topk(1,candidate_model_info{task=\"task3\"})",
+					"hide": false,
+					"instant": true,
+					"legendFormat": "__auto",
+					"range": false,
+					"refId": "H"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"exemplar": false,
+					"expr": "topk(1,serving_model_info{task=\"task2\"})",
+					"hide": false,
+					"instant": true,
+					"legendFormat": "__auto",
+					"range": false,
+					"refId": "I"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"exemplar": false,
+					"expr": "topk(1,serving_model_info{task=\"task3\"})",
+					"hide": false,
+					"instant": true,
+					"legendFormat": "__auto",
+					"range": false,
+					"refId": "J"
 				}
 			],
 			"title": "Model Status",
@@ -480,13 +615,134 @@
 				{
 					"id": "labelsToFields",
 					"options": {
-						"keepLabels": ["model_deployment_status", "model_name"],
-						"valueLabel": "model_name"
+						"keepLabels": ["model", "task", "stage"]
 					}
 				},
 				{
-					"id": "merge",
+					"id": "joinByField",
+					"options": {
+						"byField": "task",
+						"mode": "outer"
+					}
+				},
+				{
+					"id": "organize",
+					"options": {
+						"excludeByName": {
+							"Time 1": true,
+							"Time 2": true,
+							"Time 3": true,
+							"Time 4": true,
+							"Time 5": true,
+							"Time 6": true,
+							"Time 7": true,
+							"Time 8": true,
+							"Time 9": true,
+							"candidate_model_info 1": true,
+							"candidate_model_info 2": true,
+							"candidate_model_info 3": true,
+							"serving_model_info 1": true,
+							"serving_model_info 2": true,
+							"serving_model_info 3": true,
+							"stage (lastNotNull) 2": true,
+							"stage (lastNotNull) 3": true,
+							"stage (lastNotNull) 4": true,
+							"task_stage_info 1": true,
+							"task_stage_info 2": true,
+							"task_stage_info 3": true
+						},
+						"includeByName": {},
+						"indexByName": {},
+						"renameByName": {
+							"Time 8": "",
+							"model 1": "Candidate model",
+							"model 2": "Serving model",
+							"model 3": "Candidate model",
+							"model 4": "Candidate model",
+							"model 5": "Serving model",
+							"model 6": "Serving model",
+							"stage (lastNotNull) 1": "",
+							"stage 1": "Stage",
+							"stage 2": "Stage",
+							"stage 3": "Stage",
+							"task": ""
+						}
+					}
+				},
+				{
+					"id": "groupBy",
+					"options": {
+						"fields": {
+							"Candidate model": {
+								"aggregations": ["lastNotNull"],
+								"operation": "aggregate"
+							},
+							"Serving model": {
+								"aggregations": ["lastNotNull"],
+								"operation": "aggregate"
+							},
+							"Stage": {
+								"aggregations": ["lastNotNull"],
+								"operation": "aggregate"
+							},
+							"model": {
+								"aggregations": ["lastNotNull"],
+								"operation": "aggregate"
+							},
+							"stage": {
+								"aggregations": ["lastNotNull"],
+								"operation": "aggregate"
+							},
+							"stage 1": {
+								"aggregations": []
+							},
+							"stage 2": {
+								"aggregations": ["last", "lastNotNull"]
+							},
+							"stage 4": {
+								"aggregations": ["lastNotNull", "last"],
+								"operation": "aggregate"
+							},
+							"task": {
+								"aggregations": [],
+								"operation": "groupby"
+							},
+							"task_stage_info 1": {
+								"aggregations": ["lastNotNull"]
+							},
+							"task_stage_info 2": {
+								"aggregations": ["lastNotNull"]
+							},
+							"task_stage_info 3": {
+								"aggregations": ["lastNotNull"]
+							}
+						}
+					}
+				},
+				{
+					"id": "organize",
 					"options": {}
+				},
+				{
+					"id": "organize",
+					"options": {
+						"excludeByName": {
+							"Candidate model (lastNotNull) 2": true,
+							"Candidate model (lastNotNull) 3": true,
+							"Serving model (lastNotNull) 2": true,
+							"Serving model (lastNotNull) 3": true,
+							"Stage (lastNotNull) 2": true,
+							"Stage (lastNotNull) 3": true
+						},
+						"includeByName": {},
+						"indexByName": {},
+						"renameByName": {
+							"Candidate model (lastNotNull) 1": "Candidate model ",
+							"Serving model (lastNotNull) 1": "Serving model",
+							"Stage (lastNotNull) 1": "Stage",
+							"task": ""
+						}
+					}
 				}
 			],
 			"type": "table"
@@ -497,7 +753,7 @@
 				"h": 1,
 				"w": 24,
 				"x": 0,
-				"y": 27
+				"y": 28
 			},
 			"id": 8,
 			"panels": [],
@@ -569,7 +825,7 @@
 				"h": 9,
 				"w": 12,
 				"x": 0,
-				"y": 28
+				"y": 29
 			},
 			"id": 9,
 			"options": {
@@ -672,7 +928,7 @@
 				"h": 9,
 				"w": 12,
 				"x": 12,
-				"y": 28
+				"y": 29
 			},
 			"id": 10,
 			"options": {
@@ -772,7 +1028,7 @@
 				"h": 9,
 				"w": 12,
 				"x": 0,
-				"y": 37
+				"y": 38
 			},
 			"id": 11,
 			"options": {
@@ -872,7 +1128,7 @@
 				"h": 9,
 				"w": 12,
 				"x": 12,
-				"y": 37
+				"y": 38
 			},
 			"id": 12,
 			"options": {
@@ -974,7 +1230,7 @@
 				"h": 8,
 				"w": 12,
 				"x": 0,
-				"y": 46
+				"y": 47
 			},
 			"id": 13,
 			"options": {
@@ -1011,17 +1267,15 @@
 	"refresh": "5s",
 	"schemaVersion": 41,
 	"tags": ["model", "performance", "monitoring"],
-	"templating": {
-		"list": []
-	},
+
 	"time": {
 		"from": "now-5m",
 		"to": "now"
 	},
 	"timepicker": {},
 	"timezone": "",
-	"title": "Model Monitoring Dashboard2",
-	"uid": "model-monitoring2",
-	"version": 22,
+	"title": "Model Monitoring Dashboard preload",
+	"uid": "model-monitoring-preload",
+	"version": 12,
 	"weekStart": ""
 }
