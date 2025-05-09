@@ -1,3 +1,4 @@
+flask
 absl-py==2.1.0
 accelerate==1.6.0
 aiohappyeyeballs==2.6.1
