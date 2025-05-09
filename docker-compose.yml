@@ -28,8 +28,6 @@ services:
     command: python summary_app.py
     volumes:
       - ./model:/app/models
-    networks:
-      - mlops-network
 
 networks:
   mlops-network:
@@ -44,10 +42,6 @@ networks:
   #     - ./etl_data:/app/etl_data
   #   networks:
   #     - mlops-network
-
-networks:
-  mlops-network:
-    driver: bridge
 
     # networks:
     #   - mlops-network
