@@ -1,5 +1,4 @@
 version: "3.8"
-
 services:
   classification:
     build:
@@ -28,11 +27,29 @@ services:
     command: python summary_app.py
     volumes:
       - ./model:/app/models
+    networks:
+      - mlops-network
 
 networks:
   mlops-network:
     driver: bridge
 
+# services:
+#   train:
+#     build:
+#       context: ./train
+#     container_name: train-container
+#     volumes:
+#       - ./etl_data:/app/etl_data
+#       - ./model:/app/models
+#     ports:
+#       - "8001:8000"
+#     environment:
+#       WANDB_API_KEY: 6152575167d0e4509e925806279765771edac7e4
+#     # depends_on:
+#     #   - etl
+#     networks:
+#       - mlops-network
 
   # etl:
   #   build:
@@ -43,51 +60,8 @@ networks:
   #   networks:
   #     - mlops-network
 
-    # networks:
-    #   - mlops-network
-
-  # mlflow:
-  #   image: mlflow:latest
-  #   ports:
-  #     - "8000:8000"
-  #   networks:
-  #     - mlops-network
-
 # networks:
 #   mlops-network:
 #     driver: bridge
 
-
-
-
-#   train:
-#     build: ./train
-#     container_name: train
-#     environment:
-#       - WANDB_API_KEY=6152575167d0e4509e925806279765771edac7e4
-#     ports:
-#       - "8000:8000"
-#     volumes:
-#       - ./train:/app
-#     networks:
-#       - mlnet
-#     depends_on:
-#       - deploy
-
-#   deploy:
-#     build: ./deploy
-#     container_name: deploy
-#     ports:
-#       - "8000:8000"
-#     volumes:
-#       - ./deploy:/app
-#     networks:
-#       - mlnet
-
-# networks:
-#   mlnet:
-#     driver: bridge
-
-
-
-
+ 
