@@ -1276,6 +1276,6 @@
 	"timezone": "",
 	"title": "Model Monitoring Dashboard preload",
 	"uid": "model-monitoring-preload",
-	"version": 12,
+	"version": 1,
 	"weekStart": ""
 }

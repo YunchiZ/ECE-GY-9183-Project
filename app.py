@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, Response, request
 import logging
 import threading
 import json
@@ -8,55 +8,43 @@ import sqlite3
 import numpy as np
 from typing import List
 
+import time
 from rouge_score import rouge_scorer
 from sklearn.metrics import accuracy_score
 
 from prometheus_update import UpdateAgent
+from prometheus_client import generate_latest
 
 # ！！！！！！！
 # 全篇代码还差很多异常处理(try except)的框架
 # 例如对于指标s_metrics; c_metrics的操作等； 任何文件的读取与写入等等
 # 全篇代码还差大量关于logging日志输出的代码 需要全部进行微调
 # 对于json消息的解析还需要全面优化 request.get_json(force=True) 被gpt标注为是存在问题的
-# 而且需要补足backoff或队列机制
+# 而且需要补足backoff或队列机制 ？
 # 所有涉及数据库操作的部分 是否需要线程锁？
 # 关于数据库的某些设置 请参照 deploy_app.py
 # 对于整个代码中全局变量的使用 需要检查一遍是否使用线程锁
 # !考虑引入kafka来管理http消息队列(待定)
 # 考虑使用MonitorStateManager的类来管理所有监控状态
-"""
-import threading
-
-class MonitorStateManager:
-    def __init__(self):
-        self._lock = threading.Lock()
-        self.serving = ["BART-v0", "XLN-v0", "BERT-v0"]
-        self.candidate = [None, None, None]
-        self.stage = ["normal", "normal", "normal"]
-        self.s_metrics = [[], [], []]
-        self.c_metrics = [[], [], []]
-        self.error_flags = [False, False, False]
-
-    def set_stage(self, index, new_stage):
-        with self._lock:
-            self.stage[index] = new_stage
-
-    def get_stage(self, index):
-        with self._lock:
-            return self.stage[index]
-
-    def update_metrics(self, index, metric_s, metric_c):
-        with self._lock:
-            self.s_metrics[index].append(metric_s)
-            self.c_metrics[index].append(metric_c)
-        # ...更多操作...
-
-    # 其他类似的操作
-"""
 
 
 app = Flask(__name__)
 thread_lock = threading.Lock()
+status_clock = threading.Lock()
+metric_lock = threading.Lock()
+
+# 更新prometheus指标的agent
+update_agent = None
+
+
+def get_update_agent() -> UpdateAgent:
+    """return: UpdateAgent"""
+    global update_agent
+    if update_agent is None:
+        update_agent = UpdateAgent()
+    return update_agent
+
+
 # =====================================
 # 文件地址；
 # LOCK_file = "./.../.../"
@@ -64,12 +52,13 @@ thread_lock = threading.Lock()
 # 避免频繁触发CI/CD流程
 deploy_data_dir = "/app/deploy_data"
 monitor_data_dir = "/app/monitor_data"
-label_dir = "/app/label"
+label_dir = "/app/monitor_data/label"
 
 deploy_database = os.path.join(deploy_data_dir, "serving_data.db")
 label_database = os.path.join(label_dir, "label.db")
 
 LOCK_file = "/app/LOCK.json"
+LOCK_file_db = "/app/LOCK_db.json"
 # =====================================
 # 全局变量 Global Variables
 # 目前这里设置的逻辑是 为了简化过程 训练时同时启动三种模型流程 而非单独一个模型
@@ -96,7 +85,7 @@ critical_sample = [
 ]  # 需要通过x次样本的结果评估来决定是否从shadow到canary或者从canary到serving
 sample_num = [0, 0, 0]
 t = [0.02, 0.03, 0.03]  # 需要模型有n%的性能提升才认为通过测试
-# SLA = 1500 # ms 平均响应时间需要低于500ms 无论是shadow模式下模型的推理时间还是canary模式下前端的总响应时间
+SLA = 1500  # ms 平均响应时间需要低于500ms 无论是shadow模式下模型的推理时间还是canary模式下前端的总响应时间
 critical_err = (
     0.02  # 无论是shadow阶段还是canary阶段还是normal阶段 错误率都不得超过此占比
 )
@@ -115,39 +104,10 @@ s_metrics: List[List[float]] = [[], [], []]  # 暂时使用列表 保证不同�
 # 分别存放三个模型的指标记录 对于文本总结任务 记录ROUGE数值 对于另外两个任务 记录ACC数值
 c_metrics: List[List[float]] = [[], [], []]
 # 关于数据指标的初始化??? 暂时未知 需要ETL那边的分析函数
-# ？？？
-
+data_shift_metrics = {"word_counts": [], "label_counts": []}
+error_rates = [0, 0, 0]  # 三个模型的错误率统计
 
 # ================================================ 板块隔离带
-# def report(message, task_id, model_name, model_type):  # 报告给prometheus容器的通用函数
-#     # 该函数内容在项目最后需要大改 因为该函数需要适应下面两个函数hardware_status和docker_status
-#     # message = 1 -> data shift 外部数据分布漂移
-#     # message = 2 -> error normal阶段 前端容器统计serving报警率超标
-#     # message = 3 -> performance decay 模型性能衰退
-#     # message = 4 -> shadow/canary阶段 候选模型错误率过高 直接被淘汰(消息播报 而非状态展示)
-
-#     # 放到一个端口上让Prometheus抓取
-
-#     prometheus_url = "http://prometheus:9090"  # 是这样的吗?
-#     payload = {
-#         "warning_type": message,
-#         "task_type": task_id,
-#         "model_name": model_name,
-#         "model_type": model_type,
-#     }
-#     # 该payload后期需要大改
-#     # 根据prometheus和grafana的具体工作机制来决定这里是否需要更详细的payload信息封装
-#     try:
-#         response = requests.post(prometheus_url, json=payload, timeout=5)
-#         logging.info(
-#             f"Notified prometheus docker with {payload}, status: {response.status_code}"
-#         )
-
-#     except requests.RequestException as e:
-#         logging.error(f"Error notifying prometheus docker: {e}")
-
-
-# ================================================
 
 
 def notify(docker, index, notification_type):
@@ -176,6 +136,7 @@ def notify(docker, index, notification_type):
 # CREATE TABLE IF NOT EXISTs predictions (id INTEGER PRIMARY KEY AUTOINCREMENT
 # input TEXT
 # pred TEXT/INTEGER
+# time REAL
 
 
 # label schema:
@@ -185,11 +146,21 @@ def notify(docker, index, notification_type):
 
 
 def database_merge(root_name):
-
+    """
+    return : new_db_path
+    """
     # index 确定任务类型，创建对应表单
     # $ 根据deploy_data_dir和serving[index]确定database访问路径
     # $ 根据label_dir以及? 确定用户行为标签库/文件的访问路径
-    # $ 生成对应的临时数据库放置的地址 有可能这个步骤不需要 因为有可能直接在原地进行拼接 但还是建议拼接成一个新的数据库 避免冲突
+
+    with open(LOCK_file_db, "r") as f:
+        lock_data = json.load(f)
+        lock = lock_data.get("LOCK", False)
+    while lock:
+        with open(LOCK_file_db, "r") as f:
+            lock_data = json.load(f)
+            lock = lock_data.get("LOCK", False)
+            time.sleep(1)
 
     new_db_path = os.path.join(monitor_data_dir, root_name)
 
@@ -244,13 +215,12 @@ def database_merge(root_name):
     """
     )
 
-    # 执行基本查询获取所有匹配记录
     base_query = """
     SELECT 
         p.id,
-        p.input AS predictions_input,
+        p.text AS predictions_input,
         p.pred AS predictions_pred,
-        l.input AS label_input,
+        l.text AS label_input,
         l.pred1 AS label_label1,
         l.pred2 AS label_label2,
         l.pred3 AS label_label3
@@ -276,7 +246,7 @@ def database_merge(root_name):
 
     task3_insert = """
     INSERT INTO task3_data (
-        id, predictions_input, predictions_pred, label_input, label_label3
+        id , predictions_input, predictions_pred, label_input, label_label3
     ) VALUES (?, ?, ?, ?, ?)
     """
 
@@ -284,6 +254,7 @@ def database_merge(root_name):
     task2_data = [(row[0], row[1], row[2], row[3], row[5]) for row in results]
     task3_data = [(row[0], row[1], row[2], row[3], row[6]) for row in results]
 
+    # TO THE SAME DB
     new_cur.executemany(task1_insert, task1_data)
     new_cur.executemany(task2_insert, task2_data)
     new_cur.executemany(task3_insert, task3_data)
@@ -302,21 +273,14 @@ def database_merge(root_name):
     return new_db_path
 
 
-def clear_labels(label_type):  # 删除/app/labels中被访问过的数据库
-    # 访问/app/labels中的数据库 注意是否需要使用线程锁
-    # 根据label_type检测当前任务数据库
-    # 删除对应的任务的数据库
+def metric_analysis(database: str, itype: int, e_analysis: bool = False):
+    """return: metric, error_status, error_rate"""
 
-    # 考虑前端直接覆盖文件
-    return None
-
-
-def metric_analysis(database, itype, data_analysis, e_analysis):
-
+    global error_rates
     conn = sqlite3.connect(database)
     cur = conn.cursor()
 
-    error_status, data_info = False, 0
+    error_status = False
     # $ 根据传入的目标数据库地址"database"进行访问
     # $ 通过prediction条目与label条目进行对应的指标分析
     try:
@@ -405,46 +369,86 @@ def metric_analysis(database, itype, data_analysis, e_analysis):
 
         else:
             error_status = True
-            data_info = f"无效的任务类型: {itype}"
 
+        metric = (metric1, metric2, metric3)
+
+        # # $ 在normal阶段需要分析数据分布的改变:
+        # if data_analysis:
+        #     # $ 对应的关于数据分布的分析 这个函数可能来源于ETL部分的代码改写
+        #     # 直接返回关于data shift的指标 而不是数据分布 直接就在这里进行分析
+        #     data_info = 0
+        #     pass
+
+        if e_analysis:
+
+            query = """SELECT COUNT(*) FROM task{}_data 
+                    WHERE predictions_pred IS NULL 
+                    AND time > {}""".format(
+                itype + 1, SLA
+            )
+            error_count = cur.execute(query).fetchall()[0][0]
+
+            total_query = """SELECT COUNT(*) FROM task{}_data""".format(itype + 1)
+            total_count = cur.execute(total_query).fetchall()[0][0]
+
+            # 计算当前任务的错误率
+            current_error_rate = error_count / total_count if total_count > 0 else 0
+
+            # 将计算出的错误率保存到全局数组中对应位置
+            error_rates[itype] = current_error_rate
+
+            error_status = True if current_error_rate > critical_err else False
+            # 判断为error的条件
+            # 1. 模型推理响应时间超过LSA时间
+            # 2. pred为none
+            # $ 然后判断error_rate有无超过critical_err这个值
+            # $ 如果超过了 那么 error_status = True
     finally:
         # 关闭数据库连接
         cur.close()
         conn.close()
+    return metric, error_status
 
-    metric = (metric1, metric2, metric3)
 
-    # $ 在normal阶段需要分析数据分布的改变:
-    if data_analysis:
-        # $ 对应的关于数据分布的分析 这个函数可能来源于ETL部分的代码改写
-        # 直接返回关于data shift的指标 而不是数据分布 直接就在这里进行分析
-        data_info = 0
-        pass
+def datashift_analysis(database):
+    """
+    return: word_counts:[] all length of words, label_counts:[]
+    """
+    conn = sqlite3.connect(database)
+    cur = conn.cursor()
+    # 输入长度频率分布
 
-    # $ 在shadow阶段还需要统计candidate的错误率
-    if e_analysis:
-        error_rate = 0  # 统计数据库error条目占比
-        # $ 然后判断error_rate有无超过critical_err这个值
-        # $ 如果超过了 那么 error_status = True
-        if error_rate > critical_err:
-            error_status = True
+    input_query = """select text from task1_data"""
+    input_data = cur.execute(input_query).fetchall()
+
+    word_counts = []
+
+    for row in input_data:
+        text = row[0]
+        if text is not None:
+            words = text.split()  # word count instead of char count
+            word_count = len(words)
+            word_counts.append(word_count)
+
+    # 分类标签频率变化
+    label_query = """select pred from task2_data"""
+    label_data = cur.execute(label_query).fetchall()
+
+    label_counts = {}
+
+    for row in label_data:
+        label = row[0]
+
+        if label is None:
+            label = "None"
+
+        # 更新计数
+        if label in label_counts:
+            label_counts[label] += 1
         else:
-            error_status = False
+            label_counts[label] = 1
 
-    return metric, data_info, error_status
-
-
-def database_output(s_database, c_database, database_index, operation):
-    # $ 对s_database进行修改 - 删除ID 模型预测值 cls 一系列不被最终数据集需要的键值对
-    # $ 将s_database根据database_index写入monitor data中的目标任务数据库
-    # $ 删除该临时数据库s_database
-    if operation == "canary":
-        # $ 对c_database 进行同样的修改操作
-        # $ 然后把candidate数据库也写进去
-        pass
-    if operation == "shadow" or operation == "canary":
-        pass
-        # $ 在shadow和canary阶段 都需要删除c_database临时数据库
+    return word_counts, label_counts
 
 
 @app.route("/init", methods=["POST"])
@@ -502,7 +506,7 @@ def init():
 
 @app.route("/monitor", methods=["POST"])  # 逻辑最复杂的模型监控部分 核心机制部分
 def monitor():
-    global serving, candidate, stage, sample_num, s_metrics, c_metrics, error_
+    global serving, candidate, stage, sample_num, s_metrics, c_metrics, error_, data_shift_metrics
     data = request.get_json(force=True)
     index = data.get("index")
     status = data.get("status")
@@ -532,17 +536,23 @@ def monitor():
         with thread_lock:
             serving_name = serving[index]
         db_dir = database_merge(serving_name, index)
-        clear_labels(index)
+
         # 2）接下来遍历该数据库 进行匹配、指标计算、整合、迁移; normal阶段的错误统计由前端统计 不在这里统计:
-        metric, data, _ = metric_analysis(db_dir, index, True, False)
+        metric, _ = metric_analysis(db_dir, index, True)
+
+        data_shift_metrics["word_counts"], data_shift_metrics["label_counts"] = (
+            datashift_analysis(db_dir)
+        )
+
         # 3) 随后对临时数据库进行无关条目的删除 并且添加至对应任务的database中
-        database_output(db_dir, None, index, "normal")
+        # database_output(db_dir, None, index, "normal")
         # 4) 进行全局指标变量的更新和存储:
         # 使用线程锁访问指标全局变量:
         with thread_lock:
             err_info = error_[index]  # 全局变量error_中对应的内容有无出现告警
             avg_metric = np.mean(s_metrics[index]) if len(s_metrics[index]) > 0 else 0
             s_metrics[index].append(metric)
+
             # $ 访问关于数据分布data_distribution的全局指标变量
             # $ 进行类似的操作: 分析之前的指标的平均数 然后把data这个变量也加进去成为记录的一部分
         data_shift = False  # 是为了代码完整性 先写成这样
@@ -576,18 +586,6 @@ def monitor():
                                 json.dump(lock_data, f)
                         except Exception as e:
                             print(f"修改锁文件时出错: {e}")
-        # 6) 给prometheus报告相关情况
-        if data_shift:
-            prometheus_agent.report_warning(
-                "data shift", index, serving_name, "serving"
-            )
-
-        # if err_info:
-        #     report("2", index, "serving")
-        if avg_metric - metric >= critical_decay[index]:
-            prometheus_agent.report_warning(
-                "performance decay", index, serving_name, "serving"
-            )
 
     elif status == "shadow":
         fail = False
@@ -598,12 +596,12 @@ def monitor():
             candidate_name = candidate[index]
         db_dir_s = database_merge(serving_name)
         db_dir_c = database_merge(candidate_name)
-        clear_labels(index)
+
         # 2) 匹配、指标计算
-        metric_s, _, _ = metric_analysis(db_dir_s, index, False, False)
-        metric_c, _, error = metric_analysis(db_dir_c, index, False, True)
+        metric_s, _ = metric_analysis(db_dir_s, index, False)
+        metric_c, error_status = metric_analysis(db_dir_c, index, True)
         # 3) 将临时数据库添加入对应任务的database中
-        database_output(db_dir_s, db_dir_c, index, "shadow")
+        # database_output(db_dir_s, db_dir_c, index, "shadow")
         # 4) 全局变量操作
         with thread_lock:
             s_metrics[index].append(metric_s)
@@ -613,7 +611,7 @@ def monitor():
             )  # 这里的1000可能会被改 取决于deploy容器进行通知的频率
             count = sample_num[index]
         # 5) 进入临界条件的判断:
-        if error > critical_err:  # 首先判断错误率 若超标 直接进入部署撤销流程
+        if error_status:  # 首先判断错误率 若超标 直接进入部署撤销流程
             notify("deploy", index, "normal")
             fail = True
             # 等待立即进入shadow fail的标准阶段
@@ -637,13 +635,9 @@ def monitor():
                 fail = True
                 # 等待立即进入shadow(online evaluation) fail的标准阶段
         if fail:
-            # $ 报告给prometheus - candidate模型错误率超标:(下面的代码可能要改)
-            prometheus_agent.report_warning(
-                "excessive error", index, candidate_name, "candidate"
-            )
             with thread_lock:
                 stage[index] = "normal"
-                # s_metric[index] = []  这行代码可以不用 因为既然已经失败了 可以保留serving记录 其实不用清除
+
                 c_metrics[index] = []  # 重置 为下一次做准备
                 sample_num[index] = 0
                 # 不需要对数据漂移的监控指标[model_index]进行初始化
@@ -656,9 +650,8 @@ def monitor():
             candidate_name = candidate[index]
         db_dir_s = database_merge(serving_name)
         db_dir_c = database_merge(candidate_name)
-        clear_labels(index)
         # 2) 不需要进行指标计算 将临时数据库添加入对应任务的database中
-        database_output(db_dir_s, db_dir_c, index, "canary")
+        # database_output(db_dir_s, db_dir_c, index, "canary")
         # 3) 全局指标变量获取:
         with thread_lock:
             err_info = error_[index]
@@ -674,59 +667,27 @@ def monitor():
         pass  # 不可能出现的情况 为了保持代码完整性 写pass在这里
 
 
-@app.route("/warning", methods=["POST"])
-def warning():
-    # 来自前端的http请求 主要有两种缘由:
-    # 1) 某个normal阶段的模型 前端统计的错误率超过e=2% 需要由monitor容器触发ETL(为避免冲突 仅monitor有此操作权限)
-    # 2) 在canary阶段 candidate模型在前端统计的错误率超过e=2% 需要通知deploy及时下架此candidate模型以及执行系列操作
-    # (极小概率下)如果两个模型恰好同时告警 那么前端容器会发两次post 而不是在一次post中放置两个信息
-    global serving, candidate, stage, error_
-    data = request.get_json(force=True)
-    ind = data.get("index")
-    if ind is None:
-        logging.error("No error type provided in the request.")
-        return "No error type provided", 400
-    # model_type = data.get("type") # model_type在这里有两种: "serving"/"candidate"
+@app.route("/metrics", methods=["GET"])
+def metrics():
+    global serving, candidate, s_metrics, c_metrics, data_shift_metrics, er
+    agent = get_update_agent()
 
-    # 来自font-end前端容器的错误率超标标识
-    try:
-        if 0 <= ind <= 2 and isinstance(ind, int):
-            with thread_lock:
-                error_[ind] = True
-                current_status = stage[ind]
-                serving_name = serving[ind]
-                candidate_name = candidate[ind]
-            # 使用线程锁修改error_对应的模型为True (等待下一次monitor被触发时 检验到此状态变量 并执行对应操作)
-            # 为什么不直接进行修改其他全局变量?
-            # 1. 防止该线程对于众多全局变量的修改正好与monitor线程冲突 (即使两个事件同时发生具有极小概率)
-            # 2. 直接进行修改 会使得部分数据库没有来得及被搬运至monitor data卷供后续新模型训练
-            # $ 向prometheus汇报此error信息 汇报时不需要使用线程锁:
-            if current_status == "normal":
-                prometheus_agent.report_warning(
-                    "excessive error", ind, serving_name, "serving"
-                )
+    for i in range((len(serving))):
+        agent.update_model_metrics(i, serving[i], s_metrics[i])
 
-            elif current_status == "canary":
-                prometheus_agent.report_warning(
-                    "excessive error", ind, candidate_name, "candidate"
-                )
-
+        if candidate[i] is not None:
+            agent.update_model_metrics(i, candidate[i], c_metrics[i])
+            agent.update_error_rate(candidate[i], "candidate", error_rates[i])
         else:
-            logging.error(f"Error index type out of range: {ind}")
-            return "Error index type out of range", 400
-    except Exception as e:
-        logging.exception(
-            f"An unexpected error occurred: {type(e).__name__} - {str(e)}"
-        )
-        return "Internal Server Error", 500
+            agent.update_error_rate(serving[i], "serving", error_rates[i])
+    agent.update_word_length(data_shift_metrics["word_counts"])
+    agent.update_label_frequency(data_shift_metrics["label_counts"])
 
-    return "", 200
+    return Response(generate_latest(), mimetype="text/plain")
 
 
 # ---------------- Main ----------------
 if __name__ == "__main__":
-    init()
-    prometheus_agent = UpdateAgent()
     app.run(
         host="0.0.0.0", port=8000, threaded=True
     )  # 外部触发的关于模型部署的监控 线路3 主路
