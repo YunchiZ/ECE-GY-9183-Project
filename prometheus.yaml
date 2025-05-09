@@ -11,6 +11,7 @@ scrape_configs:
     - job_name: "prometheus"
       static_configs:
           - targets: ["localhost:9090"]
+          # monitor的9090
 
     - job_name: "docker"
       static_configs:
@@ -23,3 +24,9 @@ scrape_configs:
           - targets: ["etl:8888"]
       metrics_path: "/metrics"
       scrape_interval: 10s
+
+    - job_name: "deploy"
+        static_configs:
+            - targets: ["deploy:8080"]
+        metrics_path: "/metrics"
+        scrape_interval: 10s
