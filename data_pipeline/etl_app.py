@@ -7,7 +7,23 @@ import json
 import pandas as pd
 import numpy as np
 import requests
+import sqlite3
+import boto3
+from io import BytesIO
 
+# MinIO 配置
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+MINIO_BUCKET = "etl-data"
+
+# 初始化 S3 客户端
+s3_client = boto3.client(
+    "s3",
+    endpoint_url=MINIO_ENDPOINT,
+    aws_access_key_id=MINIO_ACCESS_KEY,
+    aws_secret_access_key=MINIO_SECRET_KEY
+)
 
 # Prometheus 指标定义
 # 数据质量指标
@@ -90,38 +106,68 @@ def process_evaluation_data(data, task_id):
         logging.error(f"Error processing evaluation data: {str(e)}")
         raise
 
-def save_to_volume(data, filepath):
-    """保存数据到挂载卷"""
+def save_to_volume(data, task_id):
+    """保存处理后的数据到共享卷"""
     try:
-        # 确保目录存在
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        # 构建保存路径
+        save_dir = f"/data/processed/task{task_id}"
+        os.makedirs(save_dir, exist_ok=True)
         
-        # 如果是 DataFrame，转换为 JSON
-        if isinstance(data, pd.DataFrame):
-            data = data.to_dict(orient='records')
+        # 使用固定文件名
+        file_path = os.path.join(save_dir, "evaluation.csv")
         
-        # 保存为 JSON 文件
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        # 保存为 CSV
+        data.to_csv(file_path, index=False, encoding='utf-8')
+        
         return True
     except Exception as e:
         logging.error(f"Error saving to volume: {str(e)}")
         return False
 
-def read_from_monitor_volume(task_id):
-    """从部署数据卷读取数据"""
+def read_from_minio(task_id):
+    """从 MinIO 读取 SQLite 数据"""
     try:
-        # 构建文件路径
-        file_path = os.path.join(MONITOR_DATA_DIR, f"task{task_id}/evaluation.json")
+        # 构建对象名称
+        object_name = f"task{task_id}/evaluation.db"
+        temp_db = f"/tmp/task{task_id}_temp.db"
         
-        # 读取 JSON 文件
-        with open(file_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+        # 从 MinIO 下载文件
+        s3_client.download_file(MINIO_BUCKET, object_name, temp_db)
+        
+        # 从 SQLite 读取数据
+        conn = sqlite3.connect(temp_db)
+        query = "SELECT * FROM evaluation"
+        data = pd.read_sql_query(query, conn)
+        conn.close()
+        
+        # 删除临时文件
+        os.remove(temp_db)
         
         return data
     except Exception as e:
-        logging.error(f"Error reading from monitor volume: {str(e)}")
+        logging.error(f"Error reading from MinIO: {str(e)}")
         return None
+
+def save_to_minio(data, task_id):
+    """保存处理后的数据到 MinIO"""
+    try:
+        # 将数据保存为临时 CSV 文件
+        temp_csv = f"/tmp/task{task_id}_processed.csv"
+        data.to_csv(temp_csv, index=False, encoding='utf-8')
+        
+        # 构建对象名称
+        object_name = f"task{task_id}/evaluation_processed.csv"
+        
+        # 上传到 MinIO
+        s3_client.upload_file(temp_csv, MINIO_BUCKET, object_name)
+        
+        # 删除临时文件
+        os.remove(temp_csv)
+        
+        return True
+    except Exception as e:
+        logging.error(f"Error saving to MinIO: {str(e)}")
+        return False
 
 def process_online_evaluation(task_id, data):
     try:
@@ -130,12 +176,8 @@ def process_online_evaluation(task_id, data):
         if data is None:
             return False
         
-        # 生成文件路径
-        file_path = f"task{task_id}/evaluation.json"
-        full_path = os.path.join(PROCESSED_DATA_DIR, file_path)
-        
-        # 保存到挂载卷
-        if not save_to_volume(data, full_path):
+        # 保存到共享卷
+        if not save_to_volume(data, task_id):
             return False
         
         return True
@@ -154,29 +196,29 @@ def trigger_etl():
     try:
         # 处理所有三个任务
         for task_id in range(1, 4):
-            # 从部署数据卷读取数据
-            evaluation_data = read_from_monitor_volume(task_id)
+            # 从 MinIO 读取数据
+            evaluation_data = read_from_minio(task_id)
             if evaluation_data is None:
                 logging.error(f"Failed to read evaluation data for task {task_id}")
-                continue  # 继续处理下一个任务
+                continue
 
             # 处理数据
             success = process_online_evaluation(task_id, evaluation_data)
             if not success:
                 logging.error(f"Failed to process evaluation data for task {task_id}")
-                continue  # 继续处理下一个任务
+                continue
                 
             # ETL 成功后触发 train 服务
             try:
                 train_response = requests.post(
                     "http://train:8000/train",
-                    json={"task": f"task{task_id}"},  # 传递对应的任务ID
+                    json={},  # 移除 task 参数
                     timeout=5
                 )
                 if train_response.status_code != 200:
-                    logging.error(f"Failed to trigger train service for task {task_id}: {train_response.text}")
+                    logging.error(f"Failed to trigger train service: {train_response.text}")
             except Exception as e:
-                logging.error(f"Error triggering train service for task {task_id}: {str(e)}")
+                logging.error(f"Error triggering train service: {str(e)}")
 
         return {"status": "ETL process completed for all tasks", "task": task}, 200
     except Exception as e:
