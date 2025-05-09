@@ -1,29 +1,79 @@
-version: '3.9'
+version: '3.8'
 
 services:
-  etl:
-    build: ../data_pipeline
-    container_name: etl
+  minio:
+    image: minio/minio
     ports:
-      - "8000:8000"  # Flask API 端口
-      - "8001:8001"  # Prometheus 指标端口
-    volumes:
-      - ./:/app  # 代码目录
-      - /mnt/vdb/raw_data:/app/monitor_data  # 使用 bind mount 挂载块存储
-      - /mnt/vdb/output:/app/etl_data  # 使用 bind mount 挂载块存储
-      - etl_data:/app/etl_data  # ETL 工作目录
+      - "9000:9000"
+      - "9001:9001"
     environment:
-      - TZ=Asia/Shanghai  # 时区设置
-      - ETL_MODE=prod  # 生产模式
-    command: >
-      bash -c "gunicorn -w 1 --threads 4 -b 0.0.0.0:8000 etl_app:app"  # 启动 ETL 应用
-    networks:
-      - app_network  # 确保与其他服务在同一网络
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  etl:
+    build: .
+    volumes:
+      - ./app:/app
+      - processed_data:/data/processed
+    environment:
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=etl-data
+    depends_on:
+      minio:
+        condition: service_healthy
+
+  minio-listener:
+    build: .
+    volumes:
+      - ./app:/app
+    environment:
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=etl-data
+    command: python minio_listener.py
+    depends_on:
+      minio:
+        condition: service_healthy
+
+  load-data:
+    image: rclone/rclone:latest
+    volumes:
+      - processed_data:/data
+      - ~/.config/rclone/rclone.conf:/root/.config/rclone/rclone.conf:ro
+    environment:
+      - RCLONE_CONTAINER=object-persist-project28
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        if [ -z "$RCLONE_CONTAINER" ]; then
+          echo "ERROR: RCLONE_CONTAINER is not set"
+          exit 1
+        fi
+        echo "Cleaning up existing contents of container..."
+        rclone delete chi_tacc:$RCLONE_CONTAINER --rmdirs || true
+
+        rclone copy /data chi_tacc:$RCLONE_CONTAINER \
+        --progress \
+        --transfers=32 \
+        --checkers=16 \
+        --multi-thread-streams=4 \
+        --fast-list
+
+        echo "Listing directories in container after load stage:"
+        rclone lsd chi_tacc:$RCLONE_CONTAINER
 
 volumes:
-  etl_data:  # 保留 ETL 工作目录卷
-
-# 定义网络
-networks:
-  app_network:
-    driver: bridge 
+  minio_data:
+  processed_data: 
