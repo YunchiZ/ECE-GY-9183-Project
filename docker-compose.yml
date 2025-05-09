@@ -1,38 +1,43 @@
 version: "3.8"
+
 services:
   classification:
     build:
       context: ./train
+      dockerfile: dockerfile
     container_name: classification-container
-    command: python classification_app.py
+    command: python classification/classification_app.py
     volumes:
-      - ./model:/app/models
+      - ./train:/app
     networks:
       - mlops-network
 
   fakenews:
     build:
       context: ./train
+      dockerfile: dockerfile
     container_name: fakenews-container
-    command: python fakenews_app.py
+    command: python fake/fakenews_app.py
     volumes:
-      - ./model:/app/models
+      - ./train:/app
     networks:
       - mlops-network
 
   summary:
     build:
       context: ./train
+      dockerfile: dockerfile
     container_name: summary-container
-    command: python summary_app.py
+    command: python summarize/summary_app.py
     volumes:
-      - ./model:/app/models
+      - ./train:/app
     networks:
       - mlops-network
 
 networks:
   mlops-network:
     driver: bridge
+
 
 # services:
 #   train:

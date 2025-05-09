@@ -85,7 +85,8 @@ def parse_model_name(output_text):
     lines = [line.strip() for line in output_text.strip().splitlines() if line.strip()]
     return lines[-1] if lines else None
 
-
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000)
 
 
 
