@@ -1,40 +1,61 @@
-version: "3.8"
+# version: "3.8"
 
-services:
-  etl:
-    image: python:3.10-slim
-    container_name: etl
-    command: tail -f /dev/null  # 模拟运行状态，可换成实际 ETL 脚本
-    volumes:
-      - ./etl:/app
-    working_dir: /app
-    networks:
-      - mlnet
+# services:
+#   etl:
+#     image: python:3.10-slim
+#     container_name: etl
+#     command: tail -f /dev/null  # 模拟运行状态，可换成实际 ETL 脚本
+#     volumes:
+#       - ./etl:/app
+#     working_dir: /app
+#     networks:
+#       - mlnet
 
-  train:
-    build: ./train
-    container_name: train
-    environment:
-      - WANDB_API_KEY=6152575167d0e4509e925806279765771edac7e4
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./train:/app
-    networks:
-      - mlnet
-    depends_on:
-      - deploy
+#   train:
+#     build: ./train
+#     container_name: train
+#     environment:
+#       - WANDB_API_KEY=6152575167d0e4509e925806279765771edac7e4
+#     ports:
+#       - "8000:8000"
+#     volumes:
+#       - ./train:/app
+#     networks:
+#       - mlnet
+#     depends_on:
+#       - deploy
 
-  deploy:
-    build: ./deploy
-    container_name: deploy
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./deploy:/app
-    networks:
-      - mlnet
+#   deploy:
+#     build: ./deploy
+#     container_name: deploy
+#     ports:
+#       - "8000:8000"
+#     volumes:
+#       - ./deploy:/app
+#     networks:
+#       - mlnet
 
-networks:
-  mlnet:
-    driver: bridge
+# networks:
+#   mlnet:
+#     driver: bridge
+
+
+
+train:
+  build:
+    context: ./train  # 假设你的代码在 train/ 子目录
+  container_name: train-container
+  volumes:
+    - ./etl_data:/app/etl_data
+    - ./model:/app/models
+  ports:
+    - "8001:8000" 
+  environment:
+    MLFLOW_TRACKING_URI: http://mlflow:8000
+    MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+    WANDB_API_KEY: 6152575167d0e4509e925806279765771edac7e4
+  depends_on:
+    - etl
+    - mlflow
+  networks:
+    - mlops-network

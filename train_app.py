@@ -21,7 +21,7 @@ TRAINING_SCRIPTS = {
 }
 
 
-@app.route("/start-training", methods=["POST"])
+@app.route("/train", methods=["POST"])
 def start_training():
     data = request.json
     task_name = data.get("task")
@@ -47,6 +47,10 @@ def run_all_training():
             print(result.stdout)
             if result.stderr:
                 print(f"[WARN] stderr:\n{result.stderr}")
+            
+            if "test failed" in result.stdout.lower(): # skip message if train fail
+                print(f"[WARN] Training for task {task_name} failed. Skipping deploy notification.")
+                continue
 
             model_name = parse_model_name(result.stdout)
 
