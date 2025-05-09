@@ -1,21 +1,40 @@
 version: "3.8"
 
 services:
-  train:
+  classification:
     build:
       context: ./train
-    container_name: train-container
+    container_name: classification-container
+    command: python classification_app.py
     volumes:
-      - ./etl_data:/app/etl_data
       - ./model:/app/models
-    ports:
-      - "8001:8000"
-    environment:
-      WANDB_API_KEY: 6152575167d0e4509e925806279765771edac7e4
-    # depends_on:
-    #   - etl
     networks:
       - mlops-network
+
+  fakenews:
+    build:
+      context: ./train
+    container_name: fakenews-container
+    command: python fakenews_app.py
+    volumes:
+      - ./model:/app/models
+    networks:
+      - mlops-network
+
+  summary:
+    build:
+      context: ./train
+    container_name: summary-container
+    command: python summary_app.py
+    volumes:
+      - ./model:/app/models
+    networks:
+      - mlops-network
+
+networks:
+  mlops-network:
+    driver: bridge
+
 
   # etl:
   #   build:

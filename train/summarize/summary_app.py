@@ -413,8 +413,8 @@ if __name__ == '__main__':
         remove_columns=[]
     )
 
-    train_size = 10000  # use fewer examples
-    eval_size = 200
+    train_size = 100  # use fewer examples
+    eval_size = 20
 
     train_subset = tokenized_datasets["train"].select(range(train_size))
     eval_subset = tokenized_datasets["validation"].select(range(eval_size))
@@ -457,7 +457,7 @@ if __name__ == '__main__':
         callbacks=[],
     )
 
-    test_size = 200
+    test_size = 20
     test_dataset = tokenized_datasets["test"].select(range(test_size))
 
     best_trial = analysis.get_best_trial(metric="eval_rougeL", mode="max")
