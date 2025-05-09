@@ -1,6 +1,24 @@
 version: "3.8"
 
-# services:
+services:
+  train:
+    build:
+      context: ./train  # 假设你的代码在 train/ 子目录
+    container_name: train-container
+    volumes:
+      - ./etl_data:/app/etl_data
+      - ./model:/app/models
+    ports:
+      - "8001:8000" 
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:8000
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      WANDB_API_KEY: 6152575167d0e4509e925806279765771edac7e4
+    depends_on:
+      - etl
+      - mlflow
+    networks:
+      - mlops-network
 #   etl:
 #     image: python:3.10-slim
 #     container_name: etl
@@ -41,21 +59,4 @@ version: "3.8"
 
 
 
-train:
-  build:
-    context: ./train  # 假设你的代码在 train/ 子目录
-  container_name: train-container
-  volumes:
-    - ./etl_data:/app/etl_data
-    - ./model:/app/models
-  ports:
-    - "8001:8000" 
-  environment:
-    MLFLOW_TRACKING_URI: http://mlflow:8000
-    MLFLOW_S3_ENDPOINT_URL: http://minio:9000
-    WANDB_API_KEY: 6152575167d0e4509e925806279765771edac7e4
-  depends_on:
-    - etl
-    - mlflow
-  networks:
-    - mlops-network
+
