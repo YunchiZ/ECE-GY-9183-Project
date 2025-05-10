@@ -47,18 +47,21 @@ def run_all_training():
     try:
         logging.info("Starting training for: classification")
         path, model = classification_app.classification_run(WANDB_KEY)
-        upload_to_s3(str(path), "candidate", f"{model}.onnx")
-        notify_deploy(2, model)
+        if path != "fail":
+            upload_to_s3(str(path), "candidate", f"{model}.onnx")
+            notify_deploy(2, model)
 
         logging.info("Starting training for: fakenews")
         path, model = fakenews_app.fakenews_run(WANDB_KEY)
-        upload_to_s3(str(path), "candidate", f"{model}.onnx")
-        notify_deploy(1, model)
+        if path != "fail":
+            upload_to_s3(str(path), "candidate", f"{model}.onnx")
+            notify_deploy(1, model)
 
         logging.info("Starting training for: summary")
         path, model = summary_app.summary_run(WANDB_KEY)
-        upload_to_s3(str(path), "candidate", f"{model}.onnx")
-        notify_deploy(0, model)
+        if path != "fail":
+            upload_to_s3(str(path), "candidate", f"{model}.onnx")
+            notify_deploy(0, model)
 
     except Exception as e:
         logging.error(f"Training failed: {e}")

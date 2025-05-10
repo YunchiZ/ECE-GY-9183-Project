@@ -58,7 +58,7 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         wandb.finish()
     except:
         pass
-    
+
     trial_id = session.get_trial_name()
     wandb.init(
         project="Mlops-fakenews",
@@ -84,11 +84,11 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         learning_rate=config["learning_rate"],
         weight_decay=0.01,
         logging_dir=os.path.join(trial_dir, "logs"),
-        logging_steps=10000,
+        logging_steps=10,
         eval_strategy="steps",
         eval_steps=50,
         save_strategy="steps",
-        save_steps=50,
+        save_steps=100,
         save_total_limit=1,
         metric_for_best_model="eval_accuracy",
     )

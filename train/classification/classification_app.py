@@ -46,7 +46,7 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         wandb.finish()
     except:
         pass
-    
+
     trial_id = session.get_trial_name()
     wandb.init(
         project="Mlops-classification",
@@ -59,7 +59,7 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         trial_dir = session.get_trial_dir()
         output_dir = os.path.join(trial_dir, "results")
     except Exception as e:
-        logger.error(f"路径错误: {str(e)}")
+        logger.error(f"path error: {str(e)}")
         raise
 
     training_args = TrainingArguments(
@@ -72,9 +72,9 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         learning_rate=config["learning_rate"],
         weight_decay=0.01,
         logging_dir=os.path.join(trial_dir, "logs"),  
-        logging_steps=10000,
+        logging_steps=10,
         eval_strategy="steps",
-        eval_steps=100,
+        eval_steps=50,
         save_strategy="steps",
         save_steps=100,
         save_total_limit=1,
