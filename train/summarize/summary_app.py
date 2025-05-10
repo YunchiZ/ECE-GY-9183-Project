@@ -484,8 +484,8 @@ if __name__ == '__main__':
         callbacks=[],
     )
 
-    test_size = 20
-    test_dataset = tokenized_datasets["test"].select(range(test_size))
+    # test_size = 20
+    # test_dataset = tokenized_datasets["test"].select(range(test_size))
 
     best_trial = analysis.get_best_trial(metric="eval_rougeL", mode="max")
 
