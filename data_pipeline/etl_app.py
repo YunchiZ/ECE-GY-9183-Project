@@ -1,20 +1,18 @@
 import os
 import logging
 from flask import Flask, request
-from prometheus_client import Counter, Gauge, start_http_server, generate_latest
-import time
-import json
+from prometheus_client import Counter, Gauge, generate_latest
 import pandas as pd
 import numpy as np
 import requests
 import sqlite3
 import boto3
-from io import BytesIO
+import threading
 
 # MinIO 配置
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
+MINIO_ENDPOINT = os.getenv("MINIO_URL", "http://minio:9000")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin123")
 MINIO_BUCKET = "etl-data"
 
 # 初始化 S3 客户端
@@ -28,19 +26,12 @@ s3_client = boto3.client(
 # Prometheus 指标定义
 # 数据质量指标
 data_quality_missing_values = Gauge('data_quality_missing_values', 'Number of missing values', ['task', 'field'])
-data_quality_duplicates = Gauge('data_quality_duplicates', 'Number of duplicate entries', ['task'])
-data_quality_processing_errors = Counter('data_quality_processing_errors', 'Number of data processing errors', ['task', 'error_type'])
+data_quality_duplicates = Gauge('data_quality_duplicates', 'Number of duplicate entries', ['field'])
+data_quality_processing_errors = Counter('data_quality_processing_errors', 'Number of data processing errors', ['error_type'])
 
-# 数据目录配置 待修改...
-MONITOR_DATA_DIR = '/app/monitor_data'  # 容器内的部署数据目录
-PROCESSED_DATA_DIR = '/app/etl_data'  # 容器内的处理后数据目录
-etl_data_dir = '/app/etl_data'  # ETL 工作目录
-log_file = os.path.join(etl_data_dir, "app.log")
-
-# 确保目录存在
-os.makedirs(MONITOR_DATA_DIR, exist_ok=True)
-os.makedirs(PROCESSED_DATA_DIR, exist_ok=True)
-os.makedirs(etl_data_dir, exist_ok=True)
+# 日志配置
+log_file = "/app/etl_data/app.log"
+os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -50,67 +41,60 @@ logging.basicConfig(
 
 app = Flask(__name__)
 
-# 启动 Prometheus 指标服务器
-start_http_server(8001)
 
-def clean_text(df):
-    df.dropna(inplace=True)
-    return df
-
-def check_data_quality(data, task_id):
-    """检查数据质量并记录指标"""
+def check_and_clean_data(data, table_name):
+    """检查数据质量并记录指标，同时删除缺失值所在行"""
     try:
-        # 检查缺失值
-        for field in ['predictions_input', 'predictions_pred', 'label_input']:
-            if pd.isna(data[field]):
-                data_quality_missing_values.labels(task=f'task{task_id}', field='batch').inc()
-                return False
-        
-        # 检查重复值
-        if isinstance(data, pd.DataFrame):
-            duplicates = data.duplicated().sum()
-            if duplicates > 0:
-                data_quality_duplicates.labels(task=f'task{task_id}').set(duplicates)
-                return False
-        
-        return True
-    except Exception as e:
-        data_quality_processing_errors.labels(task=f'task{task_id}', error_type='quality_check_error').inc()
-        logging.error(f"Error checking data quality: {str(e)}")
-        return False
+        task_map = {
+            "task1_data": "text_summary",
+            "task2_data": "fake_news_detection",
+            "task3_data": "text_classification"
+        }
 
-def process_evaluation_data(data, task_id):
-    """处理评估数据"""
-    try:
-        # 检查数据质量
-        if not check_data_quality(data, task_id):
+        if table_name not in task_map:
             return None
-        
-        # 根据任务类型处理数据
-        if task_id == 1:  # 文本摘要
-            data['predictions_input'] = clean_text(data['predictions_input'])
-            data['label_input'] = clean_text(data['label_input'])
-            data['label_label1'] = clean_text(data['label_label1'])
-        elif task_id == 2:  # 假新闻检测
-            data['predictions_input'] = clean_text(data['predictions_input'])
-            data['label_input'] = clean_text(data['label_input'])
-            data['label_label2'] = int(data['label_label2'])  # 确保是整数
-        elif task_id == 3:  # 文本分类
-            data['predictions_input'] = clean_text(data['predictions_input'])
-            data['label_input'] = clean_text(data['label_input'])
-            data['label_label3'] = int(data['label_label3'])  # 确保是整数
-        
-        return data
-    except Exception as e:
-        data_quality_processing_errors.labels(task=f'task{task_id}', error_type='processing_error').inc()
-        logging.error(f"Error processing evaluation data: {str(e)}")
-        raise
 
-def save_to_volume(data, task_id):
-    """保存处理后的数据到共享卷"""
+        task_label = task_map[table_name]
+
+        # 指定字段列表
+        if table_name == "task1_data":
+            fields_to_check = ['label_input', 'label_label1']
+        elif table_name == "task2_data":
+            fields_to_check = ['label_input', 'label_label2']
+        elif table_name == "task3_data":
+            fields_to_check = ['label_input', 'label_label3']
+
+        # 记录缺失值数量（每列）并删除这些行
+        for field in fields_to_check:
+            if field in data.columns:
+                missing_count = data[field].isna().sum()
+                if missing_count > 0:
+                    data_quality_missing_values.labels(task=task_label, field=field).inc(missing_count)
+
+        # 删除含缺失值的整行（只考虑指定字段）
+        data.dropna(subset=fields_to_check, inplace=True)
+
+        # 检查重复行（全行重复）
+        duplicates = data.duplicated().sum()
+        if duplicates > 0:
+            data_quality_duplicates.labels(field=table_name).set(duplicates)
+            # 删除重复行
+            data.drop_duplicates(inplace=True)
+            logging.info(f"Removed {duplicates} duplicate rows from {table_name}")
+
+        return data
+
+    except Exception as e:
+        data_quality_processing_errors.labels(error_type='quality_check_and_clean_error').inc()
+        logging.error(f"Error checking data quality and clean for {table_name}: {str(e)}")
+        return None
+
+
+def save_to_volume(data, table_name):
+    """保存处理后的数据到共享卷，供 rclone 服务上传到对象存储"""
     try:
         # 构建保存路径
-        save_dir = f"/data/processed/task{task_id}"
+        save_dir = f"/app/etl_data/{table_name}"
         os.makedirs(save_dir, exist_ok=True)
         
         # 使用固定文件名
@@ -119,71 +103,49 @@ def save_to_volume(data, task_id):
         # 保存为 CSV
         data.to_csv(file_path, index=False, encoding='utf-8')
         
+        logging.info(f"Data saved to {file_path}, waiting for rclone to upload to object storage")
         return True
+    
     except Exception as e:
         logging.error(f"Error saving to volume: {str(e)}")
         return False
 
-def read_from_minio(task_id):
+def read_from_minio():
     """从 MinIO 读取 SQLite 数据"""
     try:
         # 构建对象名称
-        object_name = f"task{task_id}/evaluation.db"
-        temp_db = f"/tmp/task{task_id}_temp.db"
+        object_name = "evaluation.db"
+        temp_db = "/tmp/evaluation_temp.db"
         
         # 从 MinIO 下载文件
         s3_client.download_file(MINIO_BUCKET, object_name, temp_db)
         
         # 从 SQLite 读取数据
         conn = sqlite3.connect(temp_db)
-        query = "SELECT * FROM evaluation"
-        data = pd.read_sql_query(query, conn)
+        
+        # 获取所有表单名称
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        
+        # 读取所有表单数据
+        all_data = {}
+        for table in tables: 
+            table_name = table[0]
+            query = f"SELECT * FROM {table_name}"
+            data = pd.read_sql_query(query, conn)
+            all_data[table_name] = data
+            
         conn.close()
         
         # 删除临时文件
         os.remove(temp_db)
         
-        return data
+        return all_data
     except Exception as e:
         logging.error(f"Error reading from MinIO: {str(e)}")
         return None
 
-def save_to_minio(data, task_id):
-    """保存处理后的数据到 MinIO"""
-    try:
-        # 将数据保存为临时 CSV 文件
-        temp_csv = f"/tmp/task{task_id}_processed.csv"
-        data.to_csv(temp_csv, index=False, encoding='utf-8')
-        
-        # 构建对象名称
-        object_name = f"task{task_id}/evaluation_processed.csv"
-        
-        # 上传到 MinIO
-        s3_client.upload_file(temp_csv, MINIO_BUCKET, object_name)
-        
-        # 删除临时文件
-        os.remove(temp_csv)
-        
-        return True
-    except Exception as e:
-        logging.error(f"Error saving to MinIO: {str(e)}")
-        return False
-
-def process_online_evaluation(task_id, data):
-    try:
-        # 处理数据
-        data = process_evaluation_data(data, task_id)
-        if data is None:
-            return False
-        
-        # 保存到共享卷
-        if not save_to_volume(data, task_id):
-            return False
-        
-        return True
-    except Exception as e:
-        logging.error(f"Error processing online evaluation for task {task_id}: {str(e)}")
-        return False
 
 @app.route("/etl", methods=["POST"])
 def trigger_etl():
@@ -193,37 +155,75 @@ def trigger_etl():
     if not task:
         return {"error": "Missing task field"}, 400
 
-    try:
-        # 处理所有三个任务
-        for task_id in range(1, 4):
+    # 创建第一个线程用于立即返回响应
+    def send_response():
+        try:
+            requests.post(   ##这样对吗？？？
+                "http://trigger:8000/trigger",
+                json={"status": "received", "task": task},
+                timeout=5
+            )
+        except Exception as e:
+            logging.error(f"Error sending response to trigger service: {str(e)}")
+
+    # 创建第二个线程用于处理数据
+    def process_data():
+        try:
             # 从 MinIO 读取数据
-            evaluation_data = read_from_minio(task_id)
+            evaluation_data = read_from_minio()
             if evaluation_data is None:
-                logging.error(f"Failed to read evaluation data for task {task_id}")
-                continue
+                logging.error("Failed to read evaluation data")
+                return
 
-            # 处理数据
-            success = process_online_evaluation(task_id, evaluation_data)
-            if not success:
-                logging.error(f"Failed to process evaluation data for task {task_id}")
-                continue
-                
+            # 处理每个表单的数据
+            for table_name, table_data in evaluation_data.items():
+                # 处理数据
+                processed_data = check_and_clean_data(table_data, table_name)
+                if processed_data is None:
+                    logging.error(f"Failed to process evaluation data for table {table_name}")
+                    continue
+                    
+                # 保存处理后的数据到共享卷
+                if not save_to_volume(processed_data, table_name):
+                    logging.error(f"Failed to save data for table {table_name}")
+                    continue
+
             # ETL 成功后触发 train 服务
-            try:
-                train_response = requests.post(
-                    "http://train:8000/train",
-                    json={},  # 移除 task 参数
-                    timeout=5
-                )
-                if train_response.status_code != 200:
-                    logging.error(f"Failed to trigger train service: {train_response.text}")
-            except Exception as e:
-                logging.error(f"Error triggering train service: {str(e)}")
+            max_retries = 5
+            retry_count = 0
+            success = False
 
-        return {"status": "ETL process completed for all tasks", "task": task}, 200
-    except Exception as e:
-        logging.exception("ETL failed")
-        return {"error": str(e)}, 500
+            while retry_count < max_retries and not success:
+                try:
+                    train_response = requests.post(
+                        "http://train:8000/train",
+                        json={"task": "etl_process"},
+                        timeout=5
+                    )
+                    if train_response.status_code == 200:
+                        success = True
+                        logging.info("Successfully triggered train service")
+                    else:
+                        retry_count += 1
+                        if retry_count < max_retries:
+                            logging.warning(f"Failed to trigger train service (attempt {retry_count}/{max_retries}): {train_response.text}")
+                        else:
+                            logging.error(f"Failed to trigger train service after {max_retries} attempts: {train_response.text}")
+                except Exception as e:
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        logging.warning(f"Error triggering train service (attempt {retry_count}/{max_retries}): {str(e)}")
+                    else:
+                        logging.error(f"Error triggering train service after {max_retries} attempts: {str(e)}")
+
+        except Exception as e:
+            logging.exception("ETL failed")
+
+    # 启动两个线程
+    threading.Thread(target=send_response).start()
+    threading.Thread(target=process_data).start()
+
+    return {"status": "ETL process started", "task": task}, 200
 
 @app.route("/metrics", methods=["GET"])
 def metrics():
