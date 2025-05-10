@@ -6,6 +6,8 @@ import wandb
 import datasets
 import os
 os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1"
+os.environ["WANDB_MODE"] = "offline"
+os.environ["WANDB_DIR"] = "./wandb_results"
 from ray import tune
 import ray
 from ray.air import session
@@ -21,6 +23,7 @@ from datetime import datetime
 from peft import get_peft_model, LoraConfig, TaskType
 from transformers.onnx import export
 from transformers.onnx.features import FeaturesManager
+import boto3
 
 max_input_length = 1024
 max_target_length = 128
@@ -374,7 +377,22 @@ def export_with_direct_torch(model, tokenizer, output_file):
         print(f"Direct torch export failed: {e}")
         return None
 
+def upload_to_s3(local_path, bucket_name, s3_key):
+    try:
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=os.getenv("MINIO_ENDPOINT"),
+            aws_access_key_id=os.getenv("MINIO_ACCESS_KEY"),
+            aws_secret_access_key=os.getenv("MINIO_SECRET_KEY")
+        )
+        s3.upload_file(local_path, bucket_name, s3_key)
+        print(f"Uploaded {local_path} to s3://{bucket_name}/{s3_key}")
+    except Exception as e:
+        print(f"Failed to upload to S3: {e}")
+
+
 if __name__ == '__main__':
+    wandb.login(key="eyJhbGciOiJSUzI1NiIsImtpZCI6InUzaHgyQjQyQWhEUXM1M0xQY09yNnZhaTdoSlduYnF1bTRZTlZWd1VwSWM9In0.eyJjb25jdXJyZW50QWdlbnRzIjoxMCwidHJpYWwiOnRydWUsIm1heFN0b3JhZ2VHYiI6MTAwMDAwMCwibWF4VGVhbXMiOjUwLCJtYXhVc2VycyI6MTAwLCJtYXhWaWV3T25seVVzZXJzIjowLCJtYXhSZWdpc3RlcmVkTW9kZWxzIjo1LCJleHBpcmVzQXQiOiIyMDI1LTA2LTA4VDAzOjIyOjEzLjEwMVoiLCJkZXBsb3ltZW50SWQiOiI0MzEyODQ0NS1hZmJjLTQ3MzQtODdkOS1lODc2ZTk2OGQwMzgiLCJmbGFncyI6WyJOT1RJRklDQVRJT05TIiwic2xhY2siLCJub3RpZmljYXRpb25zIiwiU0NBTEFCTEUiLCJteXNxbCIsInMzIiwicmVkaXMiLCJNQU5BR0VNRU5UIiwib3JnX2Rhc2giLCJhdXRoMCIsImNvbGxlY3RfYXVkaXRfbG9ncyIsInJiYWMiXSwiY29udHJhY3RTdGFydERhdGUiOiIyMDI1LTA1LTA5VDAzOjIyOjEzLjEwMloiLCJhY2Nlc3NLZXkiOiJlMTU0ZjI5YS05NTU5LTRkMDItODI2MC1jMThkZjk0YjM5N2UiLCJzZWF0cyI6MTAwLCJ2aWV3T25seVNlYXRzIjowLCJ0ZWFtcyI6NTAsInJlZ2lzdGVyZWRNb2RlbHMiOjUsInN0b3JhZ2VHaWdzIjoxMDAwMDAwLCJleHAiOjE3NDkzNTI5MzMsIndlYXZlTGltaXRzIjp7IndlYXZlTGltaXRCeXRlcyI6bnVsbCwid2VhdmVPdmVyYWdlQ29zdENlbnRzIjowLCJ3ZWF2ZU92ZXJhZ2VVbml0IjoiTUIifX0.r0FBvQAWncwBpq-BPiq8aM4P26_HirmZ21KabPkWqPze8REnbCtD4j1jFlvI0orzwP_EW78Vu1B35thCjjZDh_yV5U0xtyPRGJmXnnQnBPdv4jmHOblllO3C_ipUBPHRm64Atb6LrxgtFwisJRaeGq1NJORLMEJmWOnlFyZkrtZ0G70tk8CjxbljOuQvMmGCYwWLbc2VpGzONCBz1jmg74et_WoXIV4a14w64cxTiqUq2_27mNJtbzJIOT-0HVtU1svqVU2Eg2t0X6My-BXj3b350HUIKenl1SB79xPhesFnsfhm3Dm_bOon8M_vJY7gYMGjg1QYG0PcczkmsJ_PyQ")
     train_dir = Path(__file__).resolve().parent.parent
 
     # save_path = './dataset'
@@ -406,18 +424,27 @@ if __name__ == '__main__':
     
     model = get_peft_model(model, lora_config)
 
+    train_raw = dataset["train"].select(range(100))
+    eval_raw = dataset["validation"].select(range(20))
+    test_raw = dataset["test"].select(range(20))
+
+    # 然后只对这部分调用 map（更快）
+    train_subset = train_raw.map(preprocess_function, batched=True)
+    eval_subset = eval_raw.map(preprocess_function, batched=True)
+    test_dataset = test_raw.map(preprocess_function, batched=True)
+
     # 应用预处理函数时，仅移除不需要的列（如果有）
-    tokenized_datasets = dataset.map(
-        preprocess_function,
-        batched=True,
-        remove_columns=[]
-    )
+    # tokenized_datasets = dataset.map(
+    #     preprocess_function,
+    #     batched=True,
+    #     remove_columns=[]
+    # )
 
-    train_size = 100  # use fewer examples
-    eval_size = 20
+    # train_size = 100  # use fewer examples
+    # eval_size = 20
 
-    train_subset = tokenized_datasets["train"].select(range(train_size))
-    eval_subset = tokenized_datasets["validation"].select(range(eval_size))
+    # train_subset = tokenized_datasets["train"].select(range(train_size))
+    # eval_subset = tokenized_datasets["validation"].select(range(eval_size))
 
     # train_subset = tokenized_datasets["train"]
     # eval_subset = tokenized_datasets["validation"]
@@ -477,6 +504,8 @@ if __name__ == '__main__':
         onnx_path = export_model_to_onnx(best_model, tokenizer, save_path, model_name)
         print(f"New model exported: {model_name}, path: {onnx_path}")
         # print(f"new model: {model_name} + {save_path}")
-        update_model_status(model_name)
+        # update_model_status(model_name)
+        if onnx_path:
+            upload_to_s3(str(onnx_path), "candidate", f"{model_name}.onnx")
         print(model_name)
     wandb.finish()
