@@ -6,9 +6,4 @@ COPY . .
 
 EXPOSE 8000
 
-ENV API_ENDPOINT="http://localhost:8080/predict" \
-    FEEDBACK_ENDPOINT="http://localhost:8080/feedback" \
-    TIMEOUT_MS="5000" \
-    PORT="8000"
-
-CMD python server.py ${PORT}
+CMD ["python", "server.py"]

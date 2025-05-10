@@ -1,0 +1,19 @@
+version: "3"
+
+services:
+    frontend:
+        build:
+            context: .
+            dockerfile: dockerfile.frontend
+        ports:
+            - "8000:8000"
+        environment:
+            - API_URL=http://localhost:8080/predict
+            - FEEDBACK_ENDPOINT=http://localhost:8080/feedback
+            - TIMEOUT_MS=5000
+            - PORT=8000
+        restart: unless-stopped
+        # 可选：添加卷映射以便于开发时实时更新文件
+        # volumes:
+
+        #   - ./:/app

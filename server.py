@@ -75,6 +75,7 @@ def get_local_ip():
 
 def run_server(port=8000):
     """Run HTTP server"""
+    print(f"Starting server on port {port}...")
     server_address = ("", port)
     httpd = HTTPServer(server_address, EnvVariableHandler)
     local_ip = get_local_ip()
