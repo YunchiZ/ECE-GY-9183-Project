@@ -5,6 +5,8 @@ import numpy as np
 import wandb
 import datasets
 import os
+import re
+import logging
 os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1"
 os.environ["WANDB_MODE"] = "offline"
 os.environ["WANDB_DIR"] = "./wandb_results"
@@ -23,50 +25,42 @@ from datetime import datetime
 from peft import get_peft_model, LoraConfig, TaskType
 from transformers.onnx import export
 from transformers.onnx.features import FeaturesManager
-# import boto3
+from functools import partial
+
+logging.basicConfig(level=logging.INFO, 
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filename='summary_train.log',
+    filemode='w' )
+logger = logging.getLogger(__name__)
 
 max_input_length = 1024
 max_target_length = 128
 
-
-
-def preprocess_function(examples):
+def preprocess_function(examples, tokenizer):
     inputs = examples["article"]
     targets = examples["highlights"]
     model_inputs = tokenizer(inputs, max_length=max_input_length, truncation=True, padding="max_length")
     labels = tokenizer(targets, max_length=max_target_length, truncation=True, padding="max_length")
     model_inputs["labels"] = labels["input_ids"]
-    
     model_inputs["article"] = examples["article"]
     model_inputs["highlights"] = examples["highlights"]
     return model_inputs
 
-
-# import evaluate
 def compute_metrics(eval_pred):
     try:
         rouge = evaluate.load('rouge')
-        
         predictions = eval_pred.predictions
         labels = eval_pred.label_ids
-        
-        # Handle case where predictions might be logits for seq2seq models
         if isinstance(predictions, tuple):
             predictions = predictions[0]
-        
-        # Check if predictions are already token IDs or if they're logits
-        if len(predictions.shape) > 2:  # For 3D tensor
+        if len(predictions.shape) > 2:
             predictions = np.argmax(predictions, axis=-1)
-        
         decoded_preds = tokenizer.batch_decode(predictions, skip_special_tokens=True)
         decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
         decoded_preds = [pred.strip() for pred in decoded_preds]
         decoded_labels = [label.strip() for label in decoded_labels]
-        
         result = rouge.compute(predictions=decoded_preds, references=decoded_labels, use_stemmer=True)
         rouge_scores = {}
-        
-        # Check the format of result and extract scores accordingly
         for metric, value in result.items():
             if hasattr(value, 'mid') and hasattr(value.mid, 'fmeasure'):
                 rouge_scores[metric] = value.mid.fmeasure
@@ -76,19 +70,13 @@ def compute_metrics(eval_pred):
                 try:
                     rouge_scores[metric] = float(value)
                 except:
-                    print(f"Warning: Could not convert {metric} score to float, using 0.0")
+                    logger.warning(f"Warning: Could not convert {metric} score to float, using 0.0")
                     rouge_scores[metric] = 0.0
-        
-        # generation length
         rouge_scores["gen_len"] = np.mean([len(pred.split()) for pred in decoded_preds])
-        
         return rouge_scores
-        
     except Exception as e:
-        print(f"metrics error：{e}")
-        # Return default values
+        logger.error(f"metrics error：{e}")
         return {"rouge1": 0.0, "rouge2": 0.0, "rougeL": 0.0, "gen_len": 0.0}
-
 
 def train_fn(config, model, train_dataset, eval_dataset, run_name):
     trial_id = session.get_trial_name()
@@ -103,23 +91,19 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         trial_dir = session.get_trial_dir()
         output_dir = os.path.join(trial_dir, "results")
     except Exception as e:
-        print(f"路径错误: {str(e)}")
+        logger.error(f"路径错误: {str(e)}")
         raise
-
 
     training_args = TrainingArguments(
         run_name=None,
         output_dir=output_dir,
-        num_train_epochs=1,  
-
+        num_train_epochs=1,
         per_device_train_batch_size=8,
         per_device_eval_batch_size=2,
         gradient_accumulation_steps=4,
-        
-        learning_rate=config["learning_rate"],  # Hyperparameter from Ray Tune
-        
+        learning_rate=config["learning_rate"],
         weight_decay=0.01,
-        logging_dir=os.path.join(trial_dir, "logs"),  
+        logging_dir=os.path.join(trial_dir, "logs"),
         logging_steps=10000,
         eval_strategy="steps",
         eval_steps=50,
@@ -130,30 +114,26 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         fp16=True,
     )
 
-
     trainer = Trainer(
-        model=model, 
-        args=training_args, 
-        train_dataset=train_subset, 
-        eval_dataset=eval_subset, 
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
         compute_metrics=compute_metrics,
     )
     try:
-        # Train
         trainer.train()
     except Exception as e:
-        print(f"Train fail: {str(e)}")
+        logger.error(f"Train fail: {str(e)}")
         raise
 
     try:
-        # Evaluate
         eval_results = trainer.evaluate()
     except Exception as e:
-        print(f"Eval fail: {str(e)}")
+        logger.error(f"Eval fail: {str(e)}")
         raise
 
     try:
-    # Return the evaluation results to Ray Tune and Wandb
         tune.report(metrics=eval_results)
         trainer.save_model(output_dir)
         tune.report(
@@ -167,56 +147,33 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
             "rougeL": eval_results["eval_rougeL"],
         })
     except Exception as e:
-        print(f"Log fail: {str(e)}")
+        logger.error(f"Log fail: {str(e)}")
         raise
-        
-def get_next_model_version(base_dir="model"):
-    task_id = "0"
 
-    current_dir = Path(__file__).resolve().parent
-    parent_dir = current_dir.parent
-    status_path = parent_dir / "model/model_status.json"
-    
-    lock_path = status_path.with_suffix(".lock")
-    lock = FileLock(str(lock_path))
-    with lock:
-        if not status_path.exists():
-            return None
-        try:
-            with status_path.open("r") as f:
-                model_status = json.load(f)
-        except json.JSONDecodeError:
-            return None
+def get_next_model_version(save_path = "models/bart_pytorch/", model_prefix="BART-v"):
+    if not os.path.exists(save_path):
+        return 1
 
-        if task_id not in model_status or not model_status[task_id]:
-            return None
+    version_pattern = re.compile(rf"^{re.escape(model_prefix)}(\d+)$")
+    max_version = 0
 
-        versions = []
-        for entry in model_status[task_id]:
-            model_name = entry.get("model", "")
-            if model_name.startswith("BART-v"):
-                try:
-                    version_num = int(model_name.replace("BART-v", ""))
-                    versions.append(version_num)
-                except ValueError:
-                    continue
+    for name in os.listdir(save_path):
+        match = version_pattern.match(name)
+        if match:
+            version_num = int(match.group(1))
+            if version_num > max_version:
+                max_version = version_num
 
-        return max(versions) if versions else 0
-    # return f"BART-v{next_version}", base_path / f"BART-v{next_version}"
-
-
+    return max_version + 1
 
 def update_model_status(new_model_name):
     task_id = "0"
-    
     current_dir = Path(__file__).resolve().parent
     parent_dir = current_dir.parent
     status_path = parent_dir / "model/model_status.json"
-    
     lock_path = status_path.with_suffix(".lock")
     lock = FileLock(str(lock_path))
     model_status = {}
-
     with lock:
         if status_path.exists():
             with status_path.open("r") as f:
@@ -226,27 +183,18 @@ def update_model_status(new_model_name):
                     model_status = {}
         else:
             model_status = {}
-
         if task_id not in model_status:
             model_status[task_id] = []
-
         task_models = model_status[task_id]
-        # remove model with same name
         task_models = [m for m in task_models if m["model"] != new_model_name]
-
-        # add new model
-        task_models.append({
-            "model": new_model_name,
-            "status": "candidate"
-        })
+        task_models.append({"model": new_model_name, "status": "candidate"})
         model_status[task_id] = task_models
-
         with status_path.open("w") as f:
             json.dump(model_status, f, indent=4)
 
 def evaluate_offline():
     retcode = pytest.main([
-        "./app/tests/bart_test",        # tests/
+        "models/off_tests/bart_test",
         "--disable-warnings",
         "-v",
         "-s"
@@ -254,66 +202,46 @@ def evaluate_offline():
     return retcode
 
 def export_model_to_onnx(model, tokenizer, output_path, model_name):
-    # Fix output path - ensure it points to a file, not a directory
     if os.path.isdir(output_path):
         output_file = os.path.join(output_path, f"{model_name}.onnx")
     else:
         output_file = output_path
-        
-    # Ensure parent directory exists
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
-    
-    print(f"Will export to: {output_file}")
-    
-    # Try all methods in order until one succeeds
+    logger.info(f"Will export to: {output_file}")
     methods = [
         export_with_transformers_api,
         export_with_direct_torch
     ]
-    
     last_error = None
     for method in methods:
         try:
-            print(f"Trying export method: {method.__name__}")
+            logger.info(f"Trying export method: {method.__name__}")
             result = method(model, tokenizer, output_file)
             if result:
                 return result
         except Exception as e:
-            print(f"Method {method.__name__} failed: {e}")
-            last_error = e
+            logger.error(f"Method {method.__name__} failed: {e}")
             import traceback
             traceback.print_exc()
-    
-    # All methods failed
+            last_error = e
     raise RuntimeError(f"All ONNX export methods failed. Last error: {last_error}")
 
-
 def export_with_transformers_api(model, tokenizer, output_file):
-    """Try exporting with the transformers ONNX API"""
     try:
         from transformers.onnx import export
         from transformers.onnx.features import FeaturesManager
         from pathlib import Path
-        
-        # Set model to evaluation mode
         model.eval()
-        
-        # Get model type
         model_type = model.config.model_type
-        
-        # Check which methods are available in FeaturesManager
-        print("Available FeaturesManager methods:")
+        logger.info("Available FeaturesManager methods:")
         for method in dir(FeaturesManager):
             if not method.startswith("_"):
-                print(f"- {method}")
-        
-        # Try the get_config method (used in newer versions)
+                logger.info(f"- {method}")
         if hasattr(FeaturesManager, "get_config"):
             onnx_config = FeaturesManager.get_config(
                 model_type=model_type,
                 task="seq2seq-lm"
             )
-            
             export(
                 tokenizer=tokenizer,
                 model=model,
@@ -321,39 +249,24 @@ def export_with_transformers_api(model, tokenizer, output_file):
                 opset=14,
                 output=Path(output_file)
             )
-            
             return output_file
-            
-        # If the above doesn't work, try alternative approaches
-        print("Trying alternative transformers export approaches...")
+        logger.info("Trying alternative transformers export approaches...")
         return None
-        
     except Exception as e:
-        print(f"Transformers API export failed: {e}")
+        logger.error(f"Transformers API export failed: {e}")
         return None
-
 
 def export_with_direct_torch(model, tokenizer, output_file):
-    """Export the model directly using torch.onnx"""
     try:
-        # Set the model to evaluation mode
         model.eval()
-        
-        # Create sample inputs
         sample_text = "This is a sample text for ONNX export."
         inputs = tokenizer(sample_text, return_tensors="pt")
-        
-        # For seq2seq models, we need decoder inputs
         decoder_input_ids = torch.tensor([[model.config.decoder_start_token_id]])
-        
-        # Define dynamic axes for variable input sizes
         dynamic_axes = {
             'input_ids': {0: 'batch_size', 1: 'sequence'},
             'attention_mask': {0: 'batch_size', 1: 'sequence'},
             'decoder_input_ids': {0: 'batch_size', 1: 'decoder_sequence'}
         }
-        
-        # Export directly using torch.onnx
         with torch.no_grad():
             torch.onnx.export(
                 model,
@@ -370,49 +283,26 @@ def export_with_direct_torch(model, tokenizer, output_file):
                 do_constant_folding=True,
                 export_params=True
             )
-        
         return output_file
-        
     except Exception as e:
-        print(f"Direct torch export failed: {e}")
+        logger.error(f"Direct torch export failed: {e}")
         return None
 
-# def upload_to_s3(local_path, bucket_name, s3_key):
-#     try:
-#         s3 = boto3.client(
-#             "s3",
-#             endpoint_url=os.getenv("MINIO_ENDPOINT"),
-#             aws_access_key_id=os.getenv("MINIO_ACCESS_KEY"),
-#             aws_secret_access_key=os.getenv("MINIO_SECRET_KEY")
-#         )
-#         s3.upload_file(local_path, bucket_name, s3_key)
-#         print(f"Uploaded {local_path} to s3://{bucket_name}/{s3_key}")
-#     except Exception as e:
-#         print(f"Failed to upload to S3: {e}")
-
-
-if __name__ == '__main__':
-    wandb.login(key="eyJhbGciOiJSUzI1NiIsImtpZCI6InUzaHgyQjQyQWhEUXM1M0xQY09yNnZhaTdoSlduYnF1bTRZTlZWd1VwSWM9In0.eyJjb25jdXJyZW50QWdlbnRzIjoxMCwidHJpYWwiOnRydWUsIm1heFN0b3JhZ2VHYiI6MTAwMDAwMCwibWF4VGVhbXMiOjUwLCJtYXhVc2VycyI6MTAwLCJtYXhWaWV3T25seVVzZXJzIjowLCJtYXhSZWdpc3RlcmVkTW9kZWxzIjo1LCJleHBpcmVzQXQiOiIyMDI1LTA2LTA4VDAzOjIyOjEzLjEwMVoiLCJkZXBsb3ltZW50SWQiOiI0MzEyODQ0NS1hZmJjLTQ3MzQtODdkOS1lODc2ZTk2OGQwMzgiLCJmbGFncyI6WyJOT1RJRklDQVRJT05TIiwic2xhY2siLCJub3RpZmljYXRpb25zIiwiU0NBTEFCTEUiLCJteXNxbCIsInMzIiwicmVkaXMiLCJNQU5BR0VNRU5UIiwib3JnX2Rhc2giLCJhdXRoMCIsImNvbGxlY3RfYXVkaXRfbG9ncyIsInJiYWMiXSwiY29udHJhY3RTdGFydERhdGUiOiIyMDI1LTA1LTA5VDAzOjIyOjEzLjEwMloiLCJhY2Nlc3NLZXkiOiJlMTU0ZjI5YS05NTU5LTRkMDItODI2MC1jMThkZjk0YjM5N2UiLCJzZWF0cyI6MTAwLCJ2aWV3T25seVNlYXRzIjowLCJ0ZWFtcyI6NTAsInJlZ2lzdGVyZWRNb2RlbHMiOjUsInN0b3JhZ2VHaWdzIjoxMDAwMDAwLCJleHAiOjE3NDkzNTI5MzMsIndlYXZlTGltaXRzIjp7IndlYXZlTGltaXRCeXRlcyI6bnVsbCwid2VhdmVPdmVyYWdlQ29zdENlbnRzIjowLCJ3ZWF2ZU92ZXJhZ2VVbml0IjoiTUIifX0.r0FBvQAWncwBpq-BPiq8aM4P26_HirmZ21KabPkWqPze8REnbCtD4j1jFlvI0orzwP_EW78Vu1B35thCjjZDh_yV5U0xtyPRGJmXnnQnBPdv4jmHOblllO3C_ipUBPHRm64Atb6LrxgtFwisJRaeGq1NJORLMEJmWOnlFyZkrtZ0G70tk8CjxbljOuQvMmGCYwWLbc2VpGzONCBz1jmg74et_WoXIV4a14w64cxTiqUq2_27mNJtbzJIOT-0HVtU1svqVU2Eg2t0X6My-BXj3b350HUIKenl1SB79xPhesFnsfhm3Dm_bOon8M_vJY7gYMGjg1QYG0PcczkmsJ_PyQ")
+def summary_run(WANDB_KEY):
+    wandb.login(key=WANDB_KEY)
+            
     train_dir = Path(__file__).resolve().parent.parent
 
-    # save_path = './dataset'
-    # data_path = train_dir / "model/bart_source"
-    save_path = train_dir / "model/bart_source"
-
-    dataset = load_dataset('abisee/cnn_dailymail', '3.0.0', cache_dir=save_path)
-
+    # dataset = load_dataset('abisee/cnn_dailymail', '3.0.0', cache_dir="./etl_data/task1/evaluation.csv")
+    dataset = pd.read_csv("./etl_data/task1/evaluation.csv")
     model_name = "facebook/bart-base"
-    tokenizer = BartTokenizer.from_pretrained(model_name, cache_dir=save_path)
-    model = BartForConditionalGeneration.from_pretrained(model_name, cache_dir=save_path)
+    tokenizer = BartTokenizer.from_pretrained(model_name, cache_dir="./models/bart_source")
     
-    # 冻结编码器部分的所有层
+    model = BartForConditionalGeneration.from_pretrained(model_name, cache_dir="./model/bart_source")
     for param in model.model.encoder.parameters():
         param.requires_grad = False
-
-    # 仅训练解码器部分的层
     for param in model.model.decoder.parameters():
         param.requires_grad = True
-
     lora_config = LoraConfig(
         r=8,
         lora_alpha=32,
@@ -421,50 +311,27 @@ if __name__ == '__main__':
         bias="none",
         task_type=TaskType.SEQ_2_SEQ_LM
     )
-    
     model = get_peft_model(model, lora_config)
 
+    tokenize_fn = partial(preprocess_function, tokenizer=tokenizer)
+    
     train_raw = dataset["train"].select(range(100))
     eval_raw = dataset["validation"].select(range(20))
     test_raw = dataset["test"].select(range(20))
-
-    # 然后只对这部分调用 map（更快）
-    train_subset = train_raw.map(preprocess_function, batched=True)
-    eval_subset = eval_raw.map(preprocess_function, batched=True)
-    test_dataset = test_raw.map(preprocess_function, batched=True)
-
-    # 应用预处理函数时，仅移除不需要的列（如果有）
-    # tokenized_datasets = dataset.map(
-    #     preprocess_function,
-    #     batched=True,
-    #     remove_columns=[]
-    # )
-
-    # train_size = 100  # use fewer examples
-    # eval_size = 20
-
-    # train_subset = tokenized_datasets["train"].select(range(train_size))
-    # eval_subset = tokenized_datasets["validation"].select(range(eval_size))
-
-    # train_subset = tokenized_datasets["train"]
-    # eval_subset = tokenized_datasets["validation"]
+    train_subset = train_raw.map(tokenize_fn, batched=True)
+    eval_subset = eval_raw.map(tokenize_fn, batched=True)
+    test_dataset = test_raw.map(tokenize_fn, batched=True)
     
     search_space = {
-        # "batch_size": tune.choice([8, 16]),
-        # "warmup_steps": tune.choice([500, 1000, 2000]),
         "learning_rate": tune.grid_search([1e-5, 2e-5]),
     }
-
-    model_id = get_next_model_version() + 1
     
-    
-    save_path = train_dir / f"model/BART/{model_id}"
-    
+    model_id = get_next_model_version()
+    save_path = f"models/BART/{model_id}"
     save_path.mkdir(parents=True, exist_ok=True)
     model_name = f"BART-v{model_id}"
-    torch_path = train_dir / f"model/bart_pytorch/{model_name}"
-    
-    
+    torch_path = f"models/bart_pytorch/{model_name}"
+
     run_name = f"{model_name}_{datetime.now().strftime('%m%d_%H%M')}"
     os.environ["WANDB_PROJECT"] = "Mlops-summary"
     os.environ["WANDB_DISABLED"] = "false"
@@ -473,39 +340,29 @@ if __name__ == '__main__':
     storage_path = f"file://{current_dir}/ray_results/summary_results"
 
     train_fn_with_params = tune.with_parameters(train_fn, model=model, train_dataset=train_subset, eval_dataset=eval_subset, run_name = run_name)
-    ray.init(_temp_dir=f"{train_dir}/ray_tmp", ignore_reinit_error=True)  # Initialize Ray
+    ray.init(_temp_dir=f"{train_dir}/ray_tmp", ignore_reinit_error=True)
     analysis = tune.run(
         train_fn_with_params,
         config=search_space,
         resources_per_trial={"cpu": 0, "gpu": 1},
-        num_samples=1,  # Number of trials (hyperparameter combinations)
+        num_samples=1,
         verbose=1,
         storage_path=storage_path,
         callbacks=[],
     )
-
-    # test_size = 20
-    # test_dataset = tokenized_datasets["test"].select(range(test_size))
-
     best_trial = analysis.get_best_trial(metric="eval_rougeL", mode="max")
-
     best_checkpoint = best_trial.checkpoint
     best_checkpoint_dir = best_checkpoint.to_directory()
-
     best_model = BartForConditionalGeneration.from_pretrained(best_checkpoint_dir)
-
     best_model.save_pretrained("tmp/latest_model")
     torch.save(test_dataset, "tmp/test_dataset.pt")
     retcode = evaluate_offline()
     if retcode != 0:
-        print("test failed")
+        logger.warning("test failed")
     else:
         best_model.save_pretrained(torch_path)
         onnx_path = export_model_to_onnx(best_model, tokenizer, save_path, model_name)
-        print(f"New model exported: {model_name}, path: {onnx_path}")
-        # print(f"new model: {model_name} + {save_path}")
-        # update_model_status(model_name)
-        # if onnx_path:
-        #     upload_to_s3(str(onnx_path), "candidate", f"{model_name}.onnx")
-        print(model_name)
+        logger.info(f"New model exported: {model_name}, path: {onnx_path}")
+        logger.info(model_name)
     wandb.finish()
+    return onnx_path, model_name

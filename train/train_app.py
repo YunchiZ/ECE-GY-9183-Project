@@ -7,19 +7,28 @@ import sqlite3
 from flask import Flask, request, jsonify
 import logging
 import subprocess
-# import time
+from fakenews_app import *
+from classification_app import *
+from summary_app import *
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, 
+    format='[%(levelname)s] %(message)s',
+    filename='train.log',
+    filemode='w' )
 
 app = Flask(__name__)
-train_data_dir = '/app/models'  # train容器管理的卷的路径
+train_data_dir = '/app/models'
 
-DEPLOY_ENDPOINT = os.environ.get("DEPLOY_ENDPOINT", "http://deploy:8000/notify")
+base_url = os.environ.get("DEPLOY_ENDPOINT", "http://deploy:8000")
+DEPLOY_ENDPOINT = base_url.rstrip('/') + "/notify"
+WANDB_KEY = os.environ.get("WANDB_LICENSE")
 
 TRAINING_SCRIPTS = {
-    "0": "classification_app.py",
-    "1": "fakenews_app.py",
-    "2": "summary_app.py"
+    1: "classification_app",
+    2: "fakenews_app.py",
+    3: "summary_app.py"
 }
-
 
 @app.route("/train", methods=["POST"])
 def start_training():
@@ -35,59 +44,61 @@ def start_training():
     return jsonify({"msg": f"Training for task '{task_name}' started"}), 200
 
 def run_all_training():
-    for task_name in TRAINING_SCRIPTS.keys():
-        print(f"[INFO] Starting training for: {task_name}")
-        try:
-            result = subprocess.run(
-                ["python", os.path.join(train_data_dir, TRAINING_SCRIPTS[task_name])],
-                capture_output=True,
-                text=True
-            )
+    try:
+        logging.info("Starting training for: classification")
+        path, model = classification_app.classification_run(WANDB_KEY)
+        upload_to_s3(str(path), "candidate", f"{model}.onnx")
+        notify_deploy(2, model)
 
-            print(result.stdout)
-            if result.stderr:
-                print(f"[WARN] stderr:\n{result.stderr}")
-            
-            if "test failed" in result.stdout.lower(): # skip message if train fail
-                print(f"[WARN] Training for task {task_name} failed. Skipping deploy notification.")
-                continue
+        logging.info("Starting training for: fakenews")
+        path, model = fakenews_app.fakenews_run(WANDB_KEY)
+        upload_to_s3(str(path), "candidate", f"{model}.onnx")
+        notify_deploy(1, model)
 
-            model_name = parse_model_name(result.stdout)
+        logging.info("Starting training for: summary")
+        path, model = summary_app.summary_run(WANDB_KEY)
+        upload_to_s3(str(path), "candidate", f"{model}.onnx")
+        notify_deploy(0, model)
 
-            # 训练完成立即通知 deploy
-            notify_deploy(task_name, model_name)
+    except Exception as e:
+        logging.error(f"Training failed: {e}")
 
-        except Exception as e:
-            print(f"[ERROR] Training failed for task '{task_name}': {e}")
-
-
-
-def notify_deploy(task_name, model_name=None):
+def notify_deploy(task_name, model_name=None, max_retries=3):
     payload = {
-        "type":"shadow",
+        "type": "shadow",
         "index": task_name,
         "model_name": model_name
     }
 
+    for attempt in range(1, max_retries + 1):
+        try:
+            logging.info(f"Attempt {attempt}: Notifying deploy service at {DEPLOY_ENDPOINT} ...")
+            response = requests.post(DEPLOY_ENDPOINT, json=payload, timeout=10)
+
+            if response.status_code == 200:
+                logging.info("Deploy acknowledged training completion.")
+                break
+            else:
+                logging.warning(f"Deploy responded with status {response.status_code}: {response.text}")
+
+        except Exception as e:
+            logging.error(f"Attempt {attempt} failed: {e}")
+
+        if attempt == max_retries:
+            logging.error("All attempts to notify deploy failed.")
+
+def upload_to_s3(local_path, bucket_name, s3_key):
     try:
-        print(f"[INFO] Notifying deploy service at {DEPLOY_ENDPOINT} ...")
-        response = requests.post(DEPLOY_ENDPOINT, json=payload, timeout=10)
-
-        if response.status_code == 200:
-            print("[INFO] Deploy acknowledged training completion.")
-        else:
-            print(f"[WARN] Deploy responded with status {response.status_code}: {response.text}")
-
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=os.getenv("MINIO_URL"),
+            aws_access_key_id=os.getenv("MINIO_ACCESS_KEY"),
+            aws_secret_access_key=os.getenv("MINIO_SECRET_KEY")
+        )
+        s3.upload_file(local_path, bucket_name, s3_key)
+        logging.info(f"Uploaded {local_path} to s3://{bucket_name}/{s3_key}")
     except Exception as e:
-        print(f"[ERROR] Failed to notify deploy: {e}")
-
-def parse_model_name(output_text):
-    lines = [line.strip() for line in output_text.strip().splitlines() if line.strip()]
-    return lines[-1] if lines else None
+        logging.error(f"Failed to upload to S3: {e}")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
-
-
-
-
