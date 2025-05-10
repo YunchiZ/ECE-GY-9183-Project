@@ -351,7 +351,7 @@ def database_merge(type: str):
 
 def metric_analysis(database: str, itype: int, e_analysis: bool = False):
     """return: metric, error_status"""
-
+    metric = 0
     conn = sqlite3.connect(database)
     cur = conn.cursor()
 
@@ -482,7 +482,7 @@ def metric_analysis(database: str, itype: int, e_analysis: bool = False):
     finally:
         cur.close()
         conn.close()
-    return metric, error_status
+        return metric, error_status
 
 
 def datashift_analysis(database):
