@@ -155,18 +155,7 @@ def trigger_etl():
     if not task:
         return {"error": "Missing task field"}, 400
 
-    # 创建第一个线程用于立即返回响应
-    def send_response():
-        try:
-            requests.post(   ##这样对吗？？？
-                "http://trigger:8000/trigger",
-                json={"status": "received", "task": task},
-                timeout=5
-            )
-        except Exception as e:
-            logging.error(f"Error sending response to trigger service: {str(e)}")
-
-    # 创建第二个线程用于处理数据
+    # 创建线程用于处理数据
     def process_data():
         try:
             # 从 MinIO 读取数据
@@ -219,8 +208,7 @@ def trigger_etl():
         except Exception as e:
             logging.exception("ETL failed")
 
-    # 启动两个线程
-    threading.Thread(target=send_response).start()
+    # 启动线程
     threading.Thread(target=process_data).start()
 
     return {"status": "ETL process started", "task": task}, 200
