@@ -1,0 +1,33 @@
+# After deployment goes live
+
+# 1. Use perf_analyzer for external scripts on three serving models:
+# Assuming compose has been fully started, and the model is called "BART", version "1"
+docker exec -it deploy \
+  perf_analyzer -m BART -v 1 \
+                -b 1 \
+                --concurrency-range 1:1 \
+                --measurement-interval 3000
+
+# 2. Full API load testing:
+
+# Trigger command:
+docker compose run --rm \
+  -e TARGET_HOST=http://deploy:8000 \
+  locust \
+  -u 20 -r 5 --run-time 5m
+
+# Baseline (CI)
+docker compose run --rm locust -u 1 -r 1 --run-time 2m
+
+# Stress (Burst)
+docker compose run --rm locust -u 5 -r 2 --run-time 8m
+
+# Containers are only created but not triggered. Trigger command:
+docker compose --profile test up locust
+
+project_root/
+├─ tests/
+│   ├─ sample.jsonl         # If text samples are needed
+│   └─ locustfile.py        # The script mentioned earlier
+├─ deploy/                  # Source code
+└─ docker-compose.auto_build.yaml

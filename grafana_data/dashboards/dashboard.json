@@ -1,0 +1,1281 @@
+{
+	"__inputs": [
+		{
+			"name": "DS_PROMETHEUS",
+			"label": "Prometheus",
+			"description": "",
+			"type": "datasource",
+			"pluginId": "prometheus",
+			"pluginName": "Prometheus"
+		}
+	],
+	"templating": {
+		"list": [
+			{
+				"current": {
+					"selected": true,
+					"text": "Prometheus",
+					"value": "Prometheus"
+				},
+				"name": "DS_PROMETHEUS",
+				"options": [],
+				"query": "prometheus",
+				"type": "datasource"
+			}
+		]
+	},
+	"__elements": {},
+	"__requires": [
+		{
+			"type": "panel",
+			"id": "barchart",
+			"name": "Bar chart",
+			"version": ""
+		},
+		{
+			"type": "grafana",
+			"id": "grafana",
+			"name": "Grafana",
+			"version": "11.6.0"
+		},
+		{
+			"type": "panel",
+			"id": "logs",
+			"name": "Logs",
+			"version": ""
+		},
+		{
+			"type": "datasource",
+			"id": "prometheus",
+			"name": "Prometheus",
+			"version": "1.0.0"
+		},
+		{
+			"type": "panel",
+			"id": "table",
+			"name": "Table",
+			"version": ""
+		},
+		{
+			"type": "panel",
+			"id": "timeseries",
+			"name": "Time series",
+			"version": ""
+		}
+	],
+	"annotations": {
+		"list": [
+			{
+				"builtIn": 1,
+				"datasource": {
+					"type": "datasource",
+					"uid": "grafana"
+				},
+				"enable": true,
+				"hide": true,
+				"iconColor": "rgba(0, 211, 255, 1)",
+				"name": "Annotations & Alerts",
+				"type": "dashboard"
+			}
+		]
+	},
+	"editable": true,
+	"fiscalYearStartMonth": 0,
+	"graphTooltip": 0,
+	"id": null,
+	"links": [],
+	"panels": [
+		{
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 0
+			},
+			"id": 1,
+			"panels": [],
+			"title": "Data Shift Analysis",
+			"type": "row"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "${DS_PROMETHEUS}"
+			},
+			"description": "Distribution of input lengths over time",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "",
+						"axisPlacement": "auto",
+						"fillOpacity": 65,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"lineWidth": 1,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green"
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					}
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 11,
+				"w": 12,
+				"x": 0,
+				"y": 1
+			},
+			"id": 2,
+			"options": {
+				"barRadius": 0,
+				"barWidth": 0.97,
+				"fullHighlight": false,
+				"groupWidth": 0.7,
+				"legend": {
+					"calcs": [],
+					"displayMode": "list",
+					"placement": "bottom",
+					"showLegend": true
+				},
+				"orientation": "auto",
+				"showValue": "auto",
+				"stacking": "normal",
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "single",
+					"sort": "none"
+				},
+				"xTickLabelRotation": 0,
+				"xTickLabelSpacing": 100
+			},
+			"pluginVersion": "11.6.0",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "sum(rate(data_word_length_bucket{le=\"50.0\"}[1h])) / sum(rate(data_word_length_count[1h]))",
+					"legendFormat": "0-50",
+					"range": true,
+					"refId": "A"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "(sum(rate(data_word_length_bucket{le=\"100.0\"}[1h])) - sum(rate(data_word_length_bucket{le=\"50.0\"}[1h]))) / sum(rate(data_word_length_count[1h]))\r\n",
+					"hide": false,
+					"instant": false,
+					"legendFormat": "50-100",
+					"range": true,
+					"refId": "B"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "(sum(rate(data_word_length_bucket{le=\"250.0\"}[1h])) - sum(rate(data_word_length_bucket{le=\"100.0\"}[1h]))) / sum(rate(data_word_length_count[1h]))",
+					"hide": false,
+					"instant": false,
+					"legendFormat": "100-250",
+					"range": true,
+					"refId": "C"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "(sum(rate(data_word_length_bucket{le=\"500.0\"}[1h])) - sum(rate(data_word_length_bucket{le=\"250.0\"}[1h]))) / sum(rate(data_word_length_count[1h]))",
+					"hide": false,
+					"instant": false,
+					"legendFormat": "250-500",
+					"range": true,
+					"refId": "D"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "(sum(rate(data_word_length_bucket{le=\"1000.0\"}[1h])) - sum(rate(data_word_length_bucket{le=\"500.0\"}[1h]))) / sum(rate(data_word_length_count[1h]))",
+					"hide": false,
+					"instant": false,
+					"legendFormat": "500-1000",
+					"range": true,
+					"refId": "E"
+				}
+			],
+			"title": "Input Length Frequency Distribution",
+			"type": "barchart"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "${DS_PROMETHEUS}"
+			},
+			"description": "Frequency of different category labels over time",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "",
+						"axisPlacement": "auto",
+						"fillOpacity": 53,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"lineWidth": 1,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green"
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "short"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 14,
+				"w": 12,
+				"x": 12,
+				"y": 1
+			},
+			"id": 3,
+			"options": {
+				"barRadius": 0,
+				"barWidth": 0.75,
+				"fullHighlight": false,
+				"groupWidth": 0.7,
+				"legend": {
+					"calcs": [],
+					"displayMode": "list",
+					"placement": "bottom",
+					"showLegend": true
+				},
+				"orientation": "auto",
+				"showValue": "auto",
+				"stacking": "percent",
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "single",
+					"sort": "none"
+				},
+				"xTickLabelRotation": 0,
+				"xTickLabelSpacing": 100
+			},
+			"pluginVersion": "11.6.0",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "data_label_frequency",
+					"interval": "",
+					"legendFormat": "{{label}}",
+					"range": true,
+					"refId": "A"
+				}
+			],
+			"title": "Category Label Frequency Changes",
+			"type": "barchart"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "${DS_PROMETHEUS}"
+			},
+			"description": "Log of data quality issues detected",
+			"gridPos": {
+				"h": 9,
+				"w": 12,
+				"x": 0,
+				"y": 12
+			},
+			"id": 4,
+			"options": {
+				"dedupStrategy": "none",
+				"enableInfiniteScrolling": false,
+				"enableLogDetails": true,
+				"prettifyLogMessage": false,
+				"showCommonLabels": false,
+				"showLabels": false,
+				"showTime": false,
+				"sortOrder": "Descending",
+				"wrapLogMessage": false
+			},
+			"pluginVersion": "11.6.0",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"expr": "data_quality_issues",
+					"interval": "",
+					"legendFormat": "Quality Issue: {{issue_type}}",
+					"refId": "A"
+				}
+			],
+			"title": "Data Quality",
+			"type": "logs"
+		},
+		{
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 21
+			},
+			"id": 5,
+			"panels": [],
+			"title": "Model Status",
+			"type": "row"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "${DS_PROMETHEUS}"
+			},
+			"description": "Current deployment status of all models",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "thresholds"
+					},
+					"custom": {
+						"align": "center",
+						"cellOptions": {
+							"type": "color-text"
+						},
+						"filterable": true,
+						"inspect": false
+					},
+					"mappings": [
+						{
+							"options": {
+								"canary": {
+									"text": "Canary"
+								},
+								"serving": {
+									"text": "Serving"
+								},
+								"shadow": {
+									"text": "Shadow"
+								}
+							},
+							"type": "value"
+						}
+					],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "blue"
+							},
+							{
+								"color": "yellow",
+								"value": "canary"
+							},
+							{
+								"color": "semi-dark-purple",
+								"value": "shadow"
+							},
+							{
+								"color": "green",
+								"value": "serving"
+							}
+						]
+					},
+					"unit": "string"
+				},
+				"overrides": [
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "candidate_model_info 1"
+						},
+						"properties": [
+							{
+								"id": "custom.width",
+								"value": 207
+							}
+						]
+					}
+				]
+			},
+			"gridPos": {
+				"h": 6,
+				"w": 16,
+				"x": 0,
+				"y": 22
+			},
+			"id": 14,
+			"options": {
+				"cellHeight": "sm",
+				"footer": {
+					"countRows": false,
+					"fields": "",
+					"reducer": ["sum"],
+					"show": false
+				},
+				"frameIndex": 0,
+				"showHeader": true,
+				"sortBy": []
+			},
+			"pluginVersion": "11.6.0",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "topk(1,task_stage_info{task=\"task1\"}) ",
+					"hide": false,
+					"instant": true,
+					"interval": "",
+					"legendFormat": "{{model_name}}",
+					"refId": "A"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"exemplar": false,
+					"expr": "topk(1,candidate_model_info{task=\"task1\"})",
+					"hide": false,
+					"instant": true,
+					"legendFormat": "__auto",
+					"range": false,
+					"refId": "B"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"exemplar": false,
+					"expr": "topk(1,serving_model_info{task=\"task1\"})",
+					"hide": false,
+					"instant": true,
+					"legendFormat": "__auto",
+					"range": false,
+					"refId": "C"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "topk(1,task_stage_info{task=\"task2\"}) ",
+					"hide": false,
+					"instant": true,
+					"interval": "",
+					"legendFormat": "{{model_name}}",
+					"refId": "E"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "topk(1,task_stage_info{task=\"task3\"}) ",
+					"hide": false,
+					"instant": true,
+					"interval": "",
+					"legendFormat": "{{model_name}}",
+					"refId": "F"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"exemplar": false,
+					"expr": "topk(1,candidate_model_info{task=\"task2\"})",
+					"hide": false,
+					"instant": true,
+					"legendFormat": "__auto",
+					"range": false,
+					"refId": "G"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"exemplar": false,
+					"expr": "topk(1,candidate_model_info{task=\"task3\"})",
+					"hide": false,
+					"instant": true,
+					"legendFormat": "__auto",
+					"range": false,
+					"refId": "H"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"exemplar": false,
+					"expr": "topk(1,serving_model_info{task=\"task2\"})",
+					"hide": false,
+					"instant": true,
+					"legendFormat": "__auto",
+					"range": false,
+					"refId": "I"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"exemplar": false,
+					"expr": "topk(1,serving_model_info{task=\"task3\"})",
+					"hide": false,
+					"instant": true,
+					"legendFormat": "__auto",
+					"range": false,
+					"refId": "J"
+				}
+			],
+			"title": "Model Status",
+			"transformations": [
+				{
+					"id": "labelsToFields",
+					"options": {
+						"keepLabels": ["model", "task", "stage"]
+					}
+				},
+				{
+					"id": "joinByField",
+					"options": {
+						"byField": "task",
+						"mode": "outer"
+					}
+				},
+				{
+					"id": "organize",
+					"options": {
+						"excludeByName": {
+							"Time 1": true,
+							"Time 2": true,
+							"Time 3": true,
+							"Time 4": true,
+							"Time 5": true,
+							"Time 6": true,
+							"Time 7": true,
+							"Time 8": true,
+							"Time 9": true,
+							"candidate_model_info 1": true,
+							"candidate_model_info 2": true,
+							"candidate_model_info 3": true,
+							"serving_model_info 1": true,
+							"serving_model_info 2": true,
+							"serving_model_info 3": true,
+							"stage (lastNotNull) 2": true,
+							"stage (lastNotNull) 3": true,
+							"stage (lastNotNull) 4": true,
+							"task_stage_info 1": true,
+							"task_stage_info 2": true,
+							"task_stage_info 3": true
+						},
+						"includeByName": {},
+						"indexByName": {},
+						"renameByName": {
+							"Time 8": "",
+							"model 1": "Candidate model",
+							"model 2": "Serving model",
+							"model 3": "Candidate model",
+							"model 4": "Candidate model",
+							"model 5": "Serving model",
+							"model 6": "Serving model",
+							"stage (lastNotNull) 1": "",
+							"stage 1": "Stage",
+							"stage 2": "Stage",
+							"stage 3": "Stage",
+							"task": ""
+						}
+					}
+				},
+				{
+					"id": "groupBy",
+					"options": {
+						"fields": {
+							"Candidate model": {
+								"aggregations": ["lastNotNull"],
+								"operation": "aggregate"
+							},
+							"Serving model": {
+								"aggregations": ["lastNotNull"],
+								"operation": "aggregate"
+							},
+							"Stage": {
+								"aggregations": ["lastNotNull"],
+								"operation": "aggregate"
+							},
+							"model": {
+								"aggregations": ["lastNotNull"],
+								"operation": "aggregate"
+							},
+							"stage": {
+								"aggregations": ["lastNotNull"],
+								"operation": "aggregate"
+							},
+							"stage 1": {
+								"aggregations": []
+							},
+							"stage 2": {
+								"aggregations": ["last", "lastNotNull"]
+							},
+							"stage 4": {
+								"aggregations": ["lastNotNull", "last"],
+								"operation": "aggregate"
+							},
+							"task": {
+								"aggregations": [],
+								"operation": "groupby"
+							},
+							"task_stage_info 1": {
+								"aggregations": ["lastNotNull"]
+							},
+							"task_stage_info 2": {
+								"aggregations": ["lastNotNull"]
+							},
+							"task_stage_info 3": {
+								"aggregations": ["lastNotNull"]
+							}
+						}
+					}
+				},
+				{
+					"id": "organize",
+					"options": {}
+				},
+				{
+					"id": "organize",
+					"options": {
+						"excludeByName": {
+							"Candidate model (lastNotNull) 2": true,
+							"Candidate model (lastNotNull) 3": true,
+							"Serving model (lastNotNull) 2": true,
+							"Serving model (lastNotNull) 3": true,
+							"Stage (lastNotNull) 2": true,
+							"Stage (lastNotNull) 3": true
+						},
+						"includeByName": {},
+						"indexByName": {},
+						"renameByName": {
+							"Candidate model (lastNotNull) 1": "Candidate model ",
+							"Serving model (lastNotNull) 1": "Serving model",
+							"Stage (lastNotNull) 1": "Stage",
+							"task": ""
+						}
+					}
+				}
+			],
+			"type": "table"
+		},
+		{
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 28
+			},
+			"id": 8,
+			"panels": [],
+			"title": "Performance Metrics",
+			"type": "row"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "${DS_PROMETHEUS}"
+			},
+			"description": "Timeline of various metrics",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "Value",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"barWidthFactor": 0.6,
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"insertNulls": false,
+						"lineInterpolation": "linear",
+						"lineWidth": 1,
+						"pointSize": 5,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"spanNulls": false,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green"
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "short"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 9,
+				"w": 12,
+				"x": 0,
+				"y": 29
+			},
+			"id": 9,
+			"options": {
+				"alertThreshold": true,
+				"legend": {
+					"calcs": [],
+					"displayMode": "list",
+					"placement": "bottom",
+					"showLegend": true
+				},
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "multi",
+					"sort": "none"
+				}
+			},
+			"pluginVersion": "11.6.0",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"exemplar": false,
+					"expr": "model_metrics",
+					"format": "time_series",
+					"instant": false,
+					"interval": "",
+					"legendFormat": "{{model_name}} - {{metric_type}}",
+					"range": true,
+					"refId": "A"
+				}
+			],
+			"title": "Metrics Timeline",
+			"type": "timeseries"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "${DS_PROMETHEUS}"
+			},
+			"description": "Total time to last byte (TTLB) for API responses",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "Response Time",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"barWidthFactor": 0.6,
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"insertNulls": false,
+						"lineInterpolation": "linear",
+						"lineWidth": 1,
+						"pointSize": 5,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"spanNulls": false,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green"
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "ms"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 9,
+				"w": 12,
+				"x": 12,
+				"y": 29
+			},
+			"id": 10,
+			"options": {
+				"alertThreshold": true,
+				"legend": {
+					"calcs": [],
+					"displayMode": "list",
+					"placement": "bottom",
+					"showLegend": true
+				},
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "multi",
+					"sort": "none"
+				}
+			},
+			"pluginVersion": "11.6.0",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "histogram_quantile(0.95, sum(rate(model_response_time_bucket[$__rate_interval])) by (le, model_name))",
+					"interval": "",
+					"legendFormat": "{{endpoint}}",
+					"range": true,
+					"refId": "A"
+				}
+			],
+			"title": "Total Response Time (TTLB)",
+			"type": "timeseries"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "${DS_PROMETHEUS}"
+			},
+			"description": "Service processing time",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "Time",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"barWidthFactor": 0.6,
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"insertNulls": false,
+						"lineInterpolation": "linear",
+						"lineWidth": 1,
+						"pointSize": 5,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"spanNulls": false,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green"
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "ms"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 9,
+				"w": 12,
+				"x": 0,
+				"y": 38
+			},
+			"id": 11,
+			"options": {
+				"alertThreshold": true,
+				"legend": {
+					"calcs": [],
+					"displayMode": "list",
+					"placement": "bottom",
+					"showLegend": true
+				},
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "multi",
+					"sort": "none"
+				}
+			},
+			"pluginVersion": "11.6.0",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "histogram_quantile(0.95, sum(rate(model_service_time_bucket[$__rate_interval])) by (le, model_name))",
+					"interval": "",
+					"legendFormat": "{{model_name}} - p95",
+					"range": true,
+					"refId": "A"
+				}
+			],
+			"title": "Service Time",
+			"type": "timeseries"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "${DS_PROMETHEUS}"
+			},
+			"description": "Model inference processing time",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "Time",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"barWidthFactor": 0.6,
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"insertNulls": false,
+						"lineInterpolation": "linear",
+						"lineWidth": 1,
+						"pointSize": 5,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"spanNulls": false,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green"
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "ms"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 9,
+				"w": 12,
+				"x": 12,
+				"y": 38
+			},
+			"id": 12,
+			"options": {
+				"alertThreshold": true,
+				"legend": {
+					"calcs": [],
+					"displayMode": "list",
+					"placement": "bottom",
+					"showLegend": true
+				},
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "multi",
+					"sort": "none"
+				}
+			},
+			"pluginVersion": "11.6.0",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"editorMode": "code",
+					"expr": "histogram_quantile(0.95, sum(rate(model_inference_time_bucket[$__rate_interval])) by (le, model_name))",
+					"interval": "",
+					"legendFormat": "{{model}}",
+					"range": true,
+					"refId": "A"
+				}
+			],
+			"title": "Model Inference Time",
+			"type": "timeseries"
+		},
+		{
+			"datasource": {
+				"type": "prometheus",
+				"uid": "${DS_PROMETHEUS}"
+			},
+			"description": "Error rate by type",
+			"fieldConfig": {
+				"defaults": {
+					"color": {
+						"mode": "palette-classic"
+					},
+					"custom": {
+						"axisBorderShow": false,
+						"axisCenteredZero": false,
+						"axisColorMode": "text",
+						"axisLabel": "Error Rate",
+						"axisPlacement": "auto",
+						"barAlignment": 0,
+						"barWidthFactor": 0.6,
+						"drawStyle": "line",
+						"fillOpacity": 10,
+						"gradientMode": "none",
+						"hideFrom": {
+							"legend": false,
+							"tooltip": false,
+							"viz": false
+						},
+						"insertNulls": false,
+						"lineInterpolation": "linear",
+						"lineWidth": 1,
+						"pointSize": 5,
+						"scaleDistribution": {
+							"type": "linear"
+						},
+						"showPoints": "never",
+						"spanNulls": false,
+						"stacking": {
+							"group": "A",
+							"mode": "none"
+						},
+						"thresholdsStyle": {
+							"mode": "off"
+						}
+					},
+					"mappings": [],
+					"max": 1,
+					"min": 0,
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green"
+							},
+							{
+								"color": "red",
+								"value": 80
+							}
+						]
+					},
+					"unit": "percentunit"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 47
+			},
+			"id": 13,
+			"options": {
+				"alertThreshold": true,
+				"legend": {
+					"calcs": [],
+					"displayMode": "list",
+					"placement": "bottom",
+					"showLegend": true
+				},
+				"tooltip": {
+					"hideZeros": false,
+					"mode": "multi",
+					"sort": "none"
+				}
+			},
+			"pluginVersion": "11.6.0",
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "${DS_PROMETHEUS}"
+					},
+					"expr": "error_rate",
+					"interval": "",
+					"legendFormat": "{{error_type}}",
+					"refId": "A"
+				}
+			],
+			"title": "Error Rate",
+			"type": "timeseries"
+		}
+	],
+	"refresh": "5s",
+	"schemaVersion": 41,
+	"tags": ["model", "performance", "monitoring"],
+
+	"time": {
+		"from": "now-5m",
+		"to": "now"
+	},
+	"timepicker": {},
+	"timezone": "",
+	"title": "Model Monitoring Dashboard preload",
+	"uid": "model-monitoring-preload",
+	"version": 1,
+	"weekStart": ""
+}

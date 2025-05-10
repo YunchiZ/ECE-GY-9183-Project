@@ -1,0 +1,7 @@
+flask
+requests
+numpy
+rouge-score
+scikit-learn
+prometheus-client
+minio

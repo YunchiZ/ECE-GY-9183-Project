@@ -1,0 +1,37 @@
+version: "3.8"
+
+x-minio-env: &minio-env
+  - MINIO_URL=http://${FIP_OPS}:9000
+  - MINIO_ACCESS_KEY=minioadmin
+  - MINIO_SECRET_KEY=minioadmin123
+
+services:
+  etl:
+    build: ./etl
+    image: arcus00/infolens:etl-0.0.1
+    environment: *minio-env
+    volumes:
+      - /mnt/object/etl_data:/app/etl_data                   
+    ports: ["8010:8000"]
+    networks: [mlops]
+
+  train:
+    build: ./train
+    image: arcus00/infolens:train-0.0.1
+    environment:
+      - DEPLOY_URL=http://${FIP_INFER}:8080
+      - WANDB_API_KEY:  ${WANDB_API_KEY}      
+      # - WANDB_ENTITY:   local
+      # - WANDB_PROJECT:  my_project
+      <<: *minio-env
+    volumes:
+      - /mnt/object/etl_data:/app/etl_data    
+      - /mnt/object/models:/app/models                                
+    ports: ["8020:8000"]
+    runtime: nvidia
+    depends_on: [etl]
+    networks: [mlops]
+
+networks:
+  mlops:
+    driver: bridge
