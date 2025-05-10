@@ -1,80 +1,65 @@
 version: "3.8"
 
+# services:
+#   classification:
+#     build:
+#       context: ./train
+#       dockerfile: dockerfile
+#     container_name: classification-container
+#     command: python classification/classification_app.py
+#     runtime: nvidia
+#     volumes:
+#       - ./train:/app
+#     networks:
+#       - mlops-network
+
+#   fakenews:
+#     build:
+#       context: ./train
+#       dockerfile: dockerfile
+#     container_name: fakenews-container
+#     command: python fake/fakenews_app.py
+#     runtime: nvidia
+#     volumes:
+#       - ./train:/app
+#     networks:
+#       - mlops-network
+
+#   summary:
+#     build:
+#       context: ./train
+#       dockerfile: dockerfile
+#     container_name: summary-container
+#     command: python summarize/summary_app.py
+#     runtime: nvidia
+#     volumes:
+#       - ./train:/app
+#     networks:
+#       - mlops-network
+
+# networks:
+#   mlops-network:
+#     driver: bridge
+
+
 services:
-  classification:
+  train:
     build:
       context: ./train
-      dockerfile: dockerfile
-    container_name: classification-container
-    command: python classification/classification_app.py
+    container_name: train-container
     runtime: nvidia
     volumes:
-      - ./train:/app
-    networks:
-      - mlops-network
-
-  fakenews:
-    build:
-      context: ./train
-      dockerfile: dockerfile
-    container_name: fakenews-container
-    command: python fake/fakenews_app.py
-    runtime: nvidia
-    volumes:
-      - ./train:/app
-    networks:
-      - mlops-network
-
-  summary:
-    build:
-      context: ./train
-      dockerfile: dockerfile
-    container_name: summary-container
-    command: python summarize/summary_app.py
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - capabilities: [gpu]
-    runtime: nvidia
-    volumes:
-      - ./train:/app
+      - ./etl_data:/app/etl_data
+      - ./model:/app/models
+    ports:
+      - "8001:8000"
+    environment:
+      WANDB_API_KEY: 6152575167d0e4509e925806279765771edac7e4
     networks:
       - mlops-network
 
 networks:
   mlops-network:
     driver: bridge
-
-
-# services:
-#   train:
-#     build:
-#       context: ./train
-#     container_name: train-container
-#     volumes:
-#       - ./etl_data:/app/etl_data
-#       - ./model:/app/models
-#     ports:
-#       - "8001:8000"
-#     environment:
-#       WANDB_API_KEY: 6152575167d0e4509e925806279765771edac7e4
-#     # depends_on:
-#     #   - etl
-#     networks:
-#       - mlops-network
-
-  # etl:
-  #   build:
-  #     context: ./etl
-  #   container_name: etl-container
-  #   volumes:
-  #     - ./etl_data:/app/etl_data
-  #   networks:
-  #     - mlops-network
-
-# networks:
-#   mlops-network:
-#     driver: bridge
 
  
