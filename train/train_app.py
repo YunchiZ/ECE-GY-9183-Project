@@ -35,9 +35,6 @@ def start_training():
     data = request.json
     task_name = data.get("task")
 
-    if not task_name or task_name not in TRAINING_SCRIPTS:
-        return jsonify({"error": "Invalid or missing task name."}), 400
-
     thread = threading.Thread(target=run_all_training)
     thread.start()
 
@@ -98,6 +95,18 @@ def upload_to_s3(local_path, bucket_name, s3_key):
             aws_access_key_id=os.getenv("MINIO_ACCESS_KEY"),
             aws_secret_access_key=os.getenv("MINIO_SECRET_KEY")
         )
+
+        # check if bucket
+        try:
+            s3.head_bucket(Bucket=bucket_name)
+        except ClientError as e:
+            error_code = int(e.response['Error']['Code'])
+            if error_code == 404:
+                s3.create_bucket(Bucket=bucket_name)
+                logging.info(f"Created bucket: {bucket_name}")
+            else:
+                raise
+
         s3.upload_file(local_path, bucket_name, s3_key)
         logging.info(f"Uploaded {local_path} to s3://{bucket_name}/{s3_key}")
     except Exception as e:
