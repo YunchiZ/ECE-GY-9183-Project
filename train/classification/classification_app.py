@@ -131,32 +131,6 @@ def get_next_model_version(save_path = "models/bert_pytorch/", model_prefix="BER
 
     return max_version + 1
 
-def update_model_status(new_model_name):
-    task_id = "2"
-    current_dir = Path(__file__).resolve().parent
-    parent_dir = current_dir.parent
-    status_path = parent_dir / "model/model_status.json"
-    lock_path = status_path.with_suffix(".lock")
-    lock = FileLock(str(lock_path))
-    model_status = {}
-    with lock:
-        if status_path.exists():
-            with status_path.open("r") as f:
-                try:
-                    model_status = json.load(f)
-                except json.JSONDecodeError:
-                    model_status = {}
-        else:
-            model_status = {}
-        if task_id not in model_status:
-            model_status[task_id] = []
-        task_models = model_status[task_id]
-        task_models = [m for m in task_models if m["model"] != new_model_name]
-        task_models.append({"model": new_model_name, "status": "candidate"})
-        model_status[task_id] = task_models
-        with status_path.open("w") as f:
-            json.dump(model_status, f, indent=4)
-
 def evaluate_offline():
     retcode = pytest.main([
         "models/tests/bert_test",
@@ -264,7 +238,7 @@ def classification_run(WANDB_KEY):
     train_texts, eval_texts, train_labels, eval_labels = train_test_split(data['short_description'], data['category'], test_size=0.2, shuffle=True)
     with open("label_encoder.pkl", "rb") as f:
         label_encoder = pickle.load(f)
-        
+
     train_labels_encoded = label_encoder.fit_transform(train_labels)
     test_labels_encoded = label_encoder.transform(test_labels)
     eval_labels_encoded = label_encoder.transform(eval_labels)

@@ -171,32 +171,6 @@ def get_next_model_version(save_path = "models/bart_pytorch/", model_prefix="BAR
 
     return max_version + 1
 
-def update_model_status(new_model_name):
-    task_id = "0"
-    current_dir = Path(__file__).resolve().parent
-    parent_dir = current_dir.parent
-    status_path = parent_dir / "model/model_status.json"
-    lock_path = status_path.with_suffix(".lock")
-    lock = FileLock(str(lock_path))
-    model_status = {}
-    with lock:
-        if status_path.exists():
-            with status_path.open("r") as f:
-                try:
-                    model_status = json.load(f)
-                except json.JSONDecodeError:
-                    model_status = {}
-        else:
-            model_status = {}
-        if task_id not in model_status:
-            model_status[task_id] = []
-        task_models = model_status[task_id]
-        task_models = [m for m in task_models if m["model"] != new_model_name]
-        task_models.append({"model": new_model_name, "status": "candidate"})
-        model_status[task_id] = task_models
-        with status_path.open("w") as f:
-            json.dump(model_status, f, indent=4)
-
 def evaluate_offline():
     retcode = pytest.main([
         "models/off_tests/bart_test",
@@ -350,7 +324,7 @@ def summary_run(WANDB_KEY):
                                                 eval_dataset=eval_subset, 
                                                 run_name = run_name,
                                                 tokenizer=tokenizer)
-                                                
+
     ray.init(_temp_dir=f"{train_dir}/ray_tmp", ignore_reinit_error=True)
     analysis = tune.run(
         train_fn_with_params,
