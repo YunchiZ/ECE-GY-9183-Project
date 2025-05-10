@@ -355,7 +355,7 @@ def summary_run(WANDB_KEY):
         storage_path=storage_path,
         callbacks=[],
     )
-    
+
     best_trial = analysis.get_best_trial(metric="eval_rougeL", mode="max")
     best_checkpoint = best_trial.checkpoint
     best_checkpoint_dir = best_checkpoint.to_directory()
@@ -363,6 +363,9 @@ def summary_run(WANDB_KEY):
     best_model.save_pretrained("tmp/latest_model")
     torch.save(test_dataset, "tmp/test_dataset.pt")
     retcode = evaluate_offline()
+
+    onnx_path = "fail"
+    
     if retcode != 0:
         logger.warning("test failed")
     else:

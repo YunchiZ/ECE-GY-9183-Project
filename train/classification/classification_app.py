@@ -314,6 +314,8 @@ def classification_run(WANDB_KEY):
     torch.save(test_labels_encoded, "tmp/test_labels.pt")
     retcode = evaluate_offline()
 
+    onnx_path = "fail"
+    
     if retcode != 0:
         logger.warning("test failed")
     else:

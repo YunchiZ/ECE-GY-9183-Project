@@ -315,7 +315,7 @@ def fakenews_run(WANDB_KEY):
     os.environ["WANDB_DISABLED"] = "false"
     current_dir = os.getcwd()
     storage_path = f"file://{current_dir}/ray_results/fakenews_results"
-    
+
     train_fn_with_params = tune.with_parameters(train_fn, model=model, train_dataset=train_dataset, eval_dataset=eval_dataset, run_name = run_name)
     ray.init(_temp_dir=f"{train_dir}/ray_tmp", ignore_reinit_error=True)
 
@@ -336,6 +336,9 @@ def fakenews_run(WANDB_KEY):
     best_model.save_pretrained("tmp/latest_model")
     torch.save(test_dataset, "tmp/test_dataset.pt")
     retcode = evaluate_offline()
+
+    onnx_path = "fail"
+    
     if retcode != 0:
         logger.warning("test failed")
     else:
