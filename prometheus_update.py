@@ -3,29 +3,29 @@ import prometheus_client as prom
 
 # dashboard
 
-# - 数据偏移
-# 输入长度频率分布
-# 分类标签频率变化
-# 数据质量
+# - Data shift
+# Input length frequency distribution
+# Classification label frequency changes
+# Data quality
 
-# - 模型状态，阶段状态 文本 -----
+# - Model status, stage status text -----
 #
-# - 指标
-# metrics 折线图-----
-# 总响应时间ttlb  折线图----
-# 模型推理时间  折线图 -----
-# 错误率-
+# - Metrics
+# metrics line chart -----
+# Total response time (ttlb) line chart ----
+# Model inference time line chart -----
+# Error rate -
 
 
 class UpdateAgent:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        # 初始化Prometheus指标
+        # Initialize Prometheus metrics
         self._init_prometheus_metrics()
         self.logger.info("MetricsAgent initialized")
 
     def _init_prometheus_metrics(self):
-        """初始化所有Prometheus指标"""
+        """Initialize all Prometheus metrics"""
         self.word_length_counter = prom.Histogram(
             "data_word_length",
             "Length of input text data",
@@ -57,7 +57,7 @@ class UpdateAgent:
         self.logger.info(f"Updated word length metrics with {len(word_counts)} samples")
 
     def update_label_frequency(self, labels_count):
-        """直接更新label_frequency指标"""
+        """Directly update label_frequency metrics"""
         total = sum(labels_count.values())
         if total == 0:
             self.logger.warning("Total count of labels is zero, skipping update")
@@ -68,7 +68,7 @@ class UpdateAgent:
             self.logger.info(f"Updated label frequency for {label} to {count/total}")
 
     def update_model_metrics(self, task, model_name, value):
-        """直接更新model_metrics指标"""
+        """Directly update model_metrics metrics"""
         if task == 0:
             self.model_metrics.labels(model_name=model_name, metric_type="ROUGE").set(
                 value
@@ -81,7 +81,7 @@ class UpdateAgent:
         self.logger.info(f"Updated model {model_name} metrics to {value}")
 
     def update_error_rate(self, model_name, role, error_rate):
-        """直接更新error_rate指标"""
+        """Directly update error_rate metrics"""
         self.error_rate.labels(model_name=model_name, role=role).set(error_rate)
         self.logger.info(f"Updated error rate for {model_name} to {error_rate}")
 
