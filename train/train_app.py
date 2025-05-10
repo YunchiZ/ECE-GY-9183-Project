@@ -12,7 +12,7 @@ import subprocess
 app = Flask(__name__)
 train_data_dir = '/app/models'  # train容器管理的卷的路径
 
-DEPLOY_ENDPOINT = "http://deploy:8000/notify" 
+DEPLOY_ENDPOINT = os.environ.get("DEPLOY_ENDPOINT", "http://deploy:8000/notify")
 
 TRAINING_SCRIPTS = {
     "0": "classification_app.py",
