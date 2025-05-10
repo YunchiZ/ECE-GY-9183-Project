@@ -8,8 +8,8 @@ import os
 import re
 import logging
 os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1"
-os.environ["WANDB_MODE"] = "offline"
-os.environ["WANDB_DIR"] = "./wandb_results"
+# os.environ["WANDB_MODE"] = "offline"
+# os.environ["WANDB_DIR"] = "./wandb_summary"
 from ray import tune
 import ray
 from ray.air import session
@@ -85,7 +85,7 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         pass
 
     trial_id = session.get_trial_name()
-    wandb.init(
+    run = wandb.init(
         project="Mlops-summary",
         entity="yunchiz-new-york-university",
         name=f"{run_name}_{trial_id}",
@@ -100,7 +100,8 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         raise
 
     training_args = TrainingArguments(
-        run_name=None,
+        run_name=run.name,
+        report_to="wandb", 
         output_dir=output_dir,
         num_train_epochs=1,
         per_device_train_batch_size=8,
@@ -268,16 +269,22 @@ def export_with_direct_torch(model, tokenizer, output_file):
         return None
 
 def summary_run(WANDB_KEY):
-    wandb.login(key=WANDB_KEY)
+    # wandb.login(key=WANDB_KEY)
+    
+    wandb.login(
+        key  = WANDB_KEY,
+        host = os.environ["WANDB_HOST"],
+    )
+
             
-    train_dir = Path(__file__).resolve().parent.parent
 
     # dataset = load_dataset('abisee/cnn_dailymail', '3.0.0', cache_dir="./etl_data/task1/evaluation.csv")
-    dataset = pd.read_csv("./etl_data/task1/evaluation.csv")
+    dataset = pd.read_csv("./etl_data/task1_data/summary_train.csv") # 
+    # dataset = pd.read_csv("./etl_data/task1/evaluation.csv") 
     model_name = "facebook/bart-base"
     tokenizer = BartTokenizer.from_pretrained(model_name, cache_dir="./models/bart_source")
     
-    model = BartForConditionalGeneration.from_pretrained(model_name, cache_dir="./model/bart_source")
+    model = BartForConditionalGeneration.from_pretrained(model_name, cache_dir="./models/bart_source")
     for param in model.model.encoder.parameters():
         param.requires_grad = False
     for param in model.model.decoder.parameters():
@@ -312,8 +319,6 @@ def summary_run(WANDB_KEY):
     torch_path = f"models/bart_pytorch/{model_name}"
 
     run_name = f"{model_name}_{datetime.now().strftime('%m%d_%H%M')}"
-    os.environ["WANDB_PROJECT"] = "Mlops-summary"
-    os.environ["WANDB_DISABLED"] = "false"
 
     current_dir = os.getcwd()
     storage_path = f"file://{current_dir}/ray_results/summary_results"
@@ -325,7 +330,7 @@ def summary_run(WANDB_KEY):
                                                 run_name = run_name,
                                                 tokenizer=tokenizer)
 
-    ray.init(_temp_dir=f"{train_dir}/ray_tmp", ignore_reinit_error=True)
+    ray.init(_temp_dir=f"./ray_tmp", ignore_reinit_error=True)
     analysis = tune.run(
         train_fn_with_params,
         config=search_space,
@@ -340,8 +345,8 @@ def summary_run(WANDB_KEY):
     best_checkpoint = best_trial.checkpoint
     best_checkpoint_dir = best_checkpoint.to_directory()
     best_model = BartForConditionalGeneration.from_pretrained(best_checkpoint_dir)
-    best_model.save_pretrained("tmp/latest_model")
-    torch.save(test_dataset, "tmp/test_dataset.pt")
+    best_model.save_pretrained("/app/models/tmp/latest_model")
+    torch.save(test_dataset, "/app/models/tmp/test_dataset.pt")
     retcode = evaluate_offline()
 
     onnx_path = "fail"

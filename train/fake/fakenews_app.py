@@ -14,8 +14,8 @@ import os
 import re
 import logging
 os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1"
-os.environ["WANDB_MODE"] = "offline"
-os.environ["WANDB_DIR"] = "./wandb_results"
+# os.environ["WANDB_MODE"] = "offline"
+# os.environ["WANDB_DIR"] = "./wandb_fakenews"
 from ray.air import session
 import ray
 from ray import tune
@@ -75,7 +75,8 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         raise
 
     training_args = TrainingArguments(
-        run_name=None,
+        run_name=run.name,
+        report_to="wandb", 
         output_dir=output_dir,
         num_train_epochs=1,
         per_device_train_batch_size=16,
@@ -252,16 +253,20 @@ def evaluate_offline():
     return retcode
 
 def fakenews_run(WANDB_KEY):
-    wandb.login(key=WANDB_KEY)
+    # wandb.login(key=WANDB_KEY)
+    wandb.login(
+        key  = WANDB_KEY,
+        host = os.environ["WANDB_HOST"],
+    )
     
-    df = pd.read_csv("./etl_data/task2/evaluation.csv")
+    df = pd.read_csv("./etl_data/task2_data/welfake_train.csv")
     
     df = df.dropna()
     df['text'] = df['title'] + " " + df['text']
     train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)
     train_df, eval_df = train_test_split(train_df, test_size=0.2, random_state=42)
 
-    tokenizer = XLNetTokenizer.from_pretrained('xlnet-base-cased', cache_dir='./model/xln_source')
+    tokenizer = XLNetTokenizer.from_pretrained('xlnet-base-cased', cache_dir='./models/xln_source')
     train_dataset = Dataset.from_pandas(train_df[['text', 'label']])
     eval_dataset = Dataset.from_pandas(eval_df[['text', 'label']])
     test_dataset = Dataset.from_pandas(test_df[['text', 'label']])
@@ -275,7 +280,7 @@ def fakenews_run(WANDB_KEY):
         'xlnet/xlnet-base-cased',
         num_labels=2,
         problem_type="single_label_classification",
-        cache_dir='./model/xln_source'
+        cache_dir='./models/xln_source'
     )
     search_space = {
         "learning_rate": tune.grid_search([1e-5]),
@@ -285,14 +290,14 @@ def fakenews_run(WANDB_KEY):
     save_path.mkdir(parents=True, exist_ok=True)
     model_name = f"XLN-v{model_id}"
     torch_path = f"models/xln_pytorch/{model_name}"
+
     run_name = f"{model_name}_{datetime.now().strftime('%m%d_%H%M')}"
-    os.environ["WANDB_PROJECT"] = "Mlops-fakenews"
-    os.environ["WANDB_DISABLED"] = "false"
+
     current_dir = os.getcwd()
     storage_path = f"file://{current_dir}/ray_results/fakenews_results"
 
     train_fn_with_params = tune.with_parameters(train_fn, model=model, train_dataset=train_dataset, eval_dataset=eval_dataset, run_name = run_name)
-    ray.init(_temp_dir=f"{train_dir}/ray_tmp", ignore_reinit_error=True)
+    ray.init(_temp_dir=f"./ray_tmp", ignore_reinit_error=True)
 
     analysis = tune.run(
         train_fn_with_params,
@@ -308,8 +313,8 @@ def fakenews_run(WANDB_KEY):
     best_checkpoint_dir = best_checkpoint.to_directory()
 
     best_model = XLNetForSequenceClassification.from_pretrained(best_checkpoint_dir)
-    best_model.save_pretrained("tmp/latest_model")
-    torch.save(test_dataset, "tmp/test_dataset.pt")
+    best_model.save_pretrained("/app/models/tmp/latest_model")
+    torch.save(test_dataset, "/app/models/tmp/test_dataset.pt")
     retcode = evaluate_offline()
 
     onnx_path = "fail"

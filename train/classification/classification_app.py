@@ -11,8 +11,8 @@ import os
 import re
 import logging
 os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1"
-os.environ["WANDB_MODE"] = "offline"
-os.environ["WANDB_DIR"] = "./wandb_results"
+# os.environ["WANDB_MODE"] = "offline"
+# os.environ["WANDB_DIR"] = "./wandb_classification"
 import ray
 from ray import tune
 from ray.air import session
@@ -48,7 +48,7 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         pass
 
     trial_id = session.get_trial_name()
-    wandb.init(
+    run = wandb.init(
         project="Mlops-classification",
         entity="yunchiz-new-york-university",
         name=f"{run_name}_{trial_id}",
@@ -63,7 +63,8 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         raise
 
     training_args = TrainingArguments(
-        run_name=None,
+        run_name=run.name,
+        report_to="wandb", 
         output_dir=output_dir,
         num_train_epochs=1,  
         per_device_train_batch_size=16,
@@ -230,10 +231,14 @@ def export_with_transformers_api(model, tokenizer, output_file):
         return None
 
 def classification_run(WANDB_KEY):
-    wandb.login(key=WANDB_KEY)
-    train_dir = Path(__file__).resolve().parent.parent
+    # wandb.login(key=WANDB_KEY)
+    wandb.login(
+        key  = WANDB_KEY,
+        host = os.environ["WANDB_HOST"],
+    )
+    # train_dir = Path(__file__).resolve().parent.parent
     # data = pd.read_csv("./dataset/NewsCategorizer.csv")
-    data = pd.read_csv("./etl_data/task3/evaluation.csv")
+    data = pd.read_csv("./etl_data/task3_data/classification_train.csv")
     train_texts, test_texts, train_labels, test_labels = train_test_split(data['short_description'], data['category'], test_size=0.2, shuffle=True)
     train_texts, eval_texts, train_labels, eval_labels = train_test_split(data['short_description'], data['category'], test_size=0.2, shuffle=True)
     with open("label_encoder.pkl", "rb") as f:
@@ -242,8 +247,8 @@ def classification_run(WANDB_KEY):
     train_labels_encoded = label_encoder.fit_transform(train_labels)
     test_labels_encoded = label_encoder.transform(test_labels)
     eval_labels_encoded = label_encoder.transform(eval_labels)
-    tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased', cache_dir='./model/bert_source')
-    model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased', num_labels=len(data['category'].unique()), cache_dir='./model/bert_source')
+    tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased', cache_dir='./models/bert_source')
+    model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased', num_labels=len(data['category'].unique()), cache_dir='./models/bert_source')
     train_encodings = tokenizer(train_texts.tolist(), truncation=True, padding=True)
     test_encodings = tokenizer(test_texts.tolist(), truncation=True, padding=True)
     eval_encodings = tokenizer(test_texts.tolist(), truncation=True, padding=True)
@@ -264,13 +269,11 @@ def classification_run(WANDB_KEY):
     torch_path = f"models/bert_pytorch/{model_name}"
     run_name = f"{model_name}_{datetime.now().strftime('%m%d_%H%M')}"
 
-    os.environ["WANDB_PROJECT"] = "Mlops-classification"
-    os.environ["WANDB_DISABLED"] = "false"
     current_dir = os.getcwd()
     storage_path = f"file://{current_dir}/ray_results/classification_results"
 
     train_fn_with_params = tune.with_parameters(train_fn, model=model, train_dataset=train_dataset, eval_dataset=eval_dataset, run_name = run_name)
-    ray.init(_temp_dir=f"{train_dir}/ray_tmp", ignore_reinit_error=True)
+    ray.init(_temp_dir=f"./ray_tmp", ignore_reinit_error=True)
     analysis = tune.run(
         train_fn_with_params,
         config=search_space,
@@ -284,9 +287,9 @@ def classification_run(WANDB_KEY):
     best_checkpoint = best_trial.checkpoint
     best_checkpoint_dir = best_checkpoint.to_directory()
     best_model = DistilBertForSequenceClassification.from_pretrained(best_checkpoint_dir)
-    best_model.save_pretrained("tmp/latest_model")
-    torch.save(test_dataset, "tmp/test_dataset.pt")
-    torch.save(test_labels_encoded, "tmp/test_labels.pt")
+    best_model.save_pretrained("/app/models/tmp/latest_model")
+    torch.save(test_dataset, "/app/models/tmp/test_dataset.pt")
+    torch.save(test_labels_encoded, "/app/models/tmp/test_labels.pt")
     retcode = evaluate_offline()
 
     onnx_path = "fail"
