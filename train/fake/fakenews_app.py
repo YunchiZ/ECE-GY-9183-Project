@@ -279,7 +279,7 @@ def evaluate_offline():
 def fakenews_run(WANDB_KEY):
     wandb.login(key=WANDB_KEY)
     
-    df = pd.read_csv("./etl_data/task3/evaluation.csv")
+    df = pd.read_csv("./etl_data/task2/evaluation.csv")
     
     df = df.dropna()
     df['text'] = df['title'] + " " + df['text']
@@ -338,7 +338,7 @@ def fakenews_run(WANDB_KEY):
     retcode = evaluate_offline()
 
     onnx_path = "fail"
-    
+
     if retcode != 0:
         logger.warning("test failed")
     else:

@@ -259,11 +259,12 @@ def classification_run(WANDB_KEY):
     wandb.login(key=WANDB_KEY)
     train_dir = Path(__file__).resolve().parent.parent
     # data = pd.read_csv("./dataset/NewsCategorizer.csv")
-    data = pd.read_csv("./etl_data/task2/evaluation.csv")
+    data = pd.read_csv("./etl_data/task3/evaluation.csv")
     train_texts, test_texts, train_labels, test_labels = train_test_split(data['short_description'], data['category'], test_size=0.2, shuffle=True)
     train_texts, eval_texts, train_labels, eval_labels = train_test_split(data['short_description'], data['category'], test_size=0.2, shuffle=True)
     with open("label_encoder.pkl", "rb") as f:
         label_encoder = pickle.load(f)
+        
     train_labels_encoded = label_encoder.fit_transform(train_labels)
     test_labels_encoded = label_encoder.transform(test_labels)
     eval_labels_encoded = label_encoder.transform(eval_labels)
@@ -315,7 +316,7 @@ def classification_run(WANDB_KEY):
     retcode = evaluate_offline()
 
     onnx_path = "fail"
-    
+
     if retcode != 0:
         logger.warning("test failed")
     else:
