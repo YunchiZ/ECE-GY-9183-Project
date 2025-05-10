@@ -1,6 +1,6 @@
 import pytest
 from eval_model import evaluate_model_rouge
-from datasets import load_dataset  # 示例加载
+from datasets import load_dataset
 from transformers import BartForConditionalGeneration, BartTokenizer
 import torch
 

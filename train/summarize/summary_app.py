@@ -96,7 +96,7 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         trial_dir = session.get_trial_dir()
         output_dir = os.path.join(trial_dir, "results")
     except Exception as e:
-        logger.error(f"路径错误: {str(e)}")
+        logger.error(f"path error: {str(e)}")
         raise
 
     training_args = TrainingArguments(
@@ -355,6 +355,7 @@ def summary_run(WANDB_KEY):
         storage_path=storage_path,
         callbacks=[],
     )
+    
     best_trial = analysis.get_best_trial(metric="eval_rougeL", mode="max")
     best_checkpoint = best_trial.checkpoint
     best_checkpoint_dir = best_checkpoint.to_directory()

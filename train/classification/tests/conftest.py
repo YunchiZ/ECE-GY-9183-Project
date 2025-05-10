@@ -8,13 +8,13 @@ from dataset_classes import NewsDataset
 
 @pytest.fixture(scope="session")
 def test_dataset():
-    # 加载你保存好的 test_dataset.pt
+    # load test_dataset.pt
     dataset = torch.load("tmp/test_dataset.pt")
     return dataset
-
+ 
 @pytest.fixture(scope="session")
 def test_labels():
-    # 加载你保存好的 test_dataset.pt
+    # load test_dataset.pt
     labels = torch.load("tmp/test_labels.pt")
     return labels
 

@@ -1,6 +1,6 @@
 import pytest
-from eval_model import evaluate_model_accuracy  # 替换为你保存上面函数的模块
-from datasets import load_dataset  # 示例加载
+from eval_model import evaluate_model_accuracy
+from datasets import load_dataset
 from transformers import DistilBertForSequenceClassification
 import torch
 import sys

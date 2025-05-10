@@ -3,7 +3,6 @@ import numpy as np
 from sklearn.metrics import f1_score
 
 def evaluate_model_f1(model, test_dataset):
-    # model = XLNetForSequenceClassification.from_pretrained(model_path)
     trainer = Trainer(
         model=model,
         args=TrainingArguments(output_dir="./tmp", per_device_eval_batch_size=8),

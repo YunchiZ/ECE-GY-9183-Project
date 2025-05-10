@@ -285,6 +285,7 @@ def fakenews_run(WANDB_KEY):
     df['text'] = df['title'] + " " + df['text']
     train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)
     train_df, eval_df = train_test_split(train_df, test_size=0.2, random_state=42)
+
     tokenizer = XLNetTokenizer.from_pretrained('xlnet-base-cased', cache_dir='./model/xln_source')
     train_dataset = Dataset.from_pandas(train_df[['text', 'label']])
     eval_dataset = Dataset.from_pandas(eval_df[['text', 'label']])
@@ -294,6 +295,7 @@ def fakenews_run(WANDB_KEY):
     train_dataset = train_dataset.map(tokenize_fn, batched=True)
     eval_dataset = eval_dataset.map(tokenize_fn, batched=True)
     test_dataset = test_dataset.map(tokenize_fn, batched=True)
+
     model = XLNetForSequenceClassification.from_pretrained(
         'xlnet/xlnet-base-cased',
         num_labels=2,
@@ -313,8 +315,10 @@ def fakenews_run(WANDB_KEY):
     os.environ["WANDB_DISABLED"] = "false"
     current_dir = os.getcwd()
     storage_path = f"file://{current_dir}/ray_results/fakenews_results"
+    
     train_fn_with_params = tune.with_parameters(train_fn, model=model, train_dataset=train_dataset, eval_dataset=eval_dataset, run_name = run_name)
     ray.init(_temp_dir=f"{train_dir}/ray_tmp", ignore_reinit_error=True)
+
     analysis = tune.run(
         train_fn_with_params,
         config=search_space,
