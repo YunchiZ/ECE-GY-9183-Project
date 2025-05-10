@@ -383,7 +383,7 @@
 
 			/* ---------- helpers ---------- */
 			const validateLen = (len) => (len < 50 ? "Content too short (min 50 chars)." : len > 12000 ? "Content too long (max 12000 chars)." : "");
-			const genId = () => Math.floor(100000 + Math.random() * 900000);
+			const genId = () => Date.now();
 			const CLS_MAP = ["BUSINESS", "ENTERTAINMENT", "FOOD & DRINK", "PARENTING", "POLITICS", "SPORTS", "STYLE & BEAUTY", "TRAVEL", "WELLNESS", "WORLD NEWS"];
 
 			// Store the current prediction ID for feedback submissions
