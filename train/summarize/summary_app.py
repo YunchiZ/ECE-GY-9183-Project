@@ -23,7 +23,7 @@ from datetime import datetime
 from peft import get_peft_model, LoraConfig, TaskType
 from transformers.onnx import export
 from transformers.onnx.features import FeaturesManager
-import boto3
+# import boto3
 
 max_input_length = 1024
 max_target_length = 128
@@ -377,18 +377,18 @@ def export_with_direct_torch(model, tokenizer, output_file):
         print(f"Direct torch export failed: {e}")
         return None
 
-def upload_to_s3(local_path, bucket_name, s3_key):
-    try:
-        s3 = boto3.client(
-            "s3",
-            endpoint_url=os.getenv("MINIO_ENDPOINT"),
-            aws_access_key_id=os.getenv("MINIO_ACCESS_KEY"),
-            aws_secret_access_key=os.getenv("MINIO_SECRET_KEY")
-        )
-        s3.upload_file(local_path, bucket_name, s3_key)
-        print(f"Uploaded {local_path} to s3://{bucket_name}/{s3_key}")
-    except Exception as e:
-        print(f"Failed to upload to S3: {e}")
+# def upload_to_s3(local_path, bucket_name, s3_key):
+#     try:
+#         s3 = boto3.client(
+#             "s3",
+#             endpoint_url=os.getenv("MINIO_ENDPOINT"),
+#             aws_access_key_id=os.getenv("MINIO_ACCESS_KEY"),
+#             aws_secret_access_key=os.getenv("MINIO_SECRET_KEY")
+#         )
+#         s3.upload_file(local_path, bucket_name, s3_key)
+#         print(f"Uploaded {local_path} to s3://{bucket_name}/{s3_key}")
+#     except Exception as e:
+#         print(f"Failed to upload to S3: {e}")
 
 
 if __name__ == '__main__':
@@ -505,7 +505,7 @@ if __name__ == '__main__':
         print(f"New model exported: {model_name}, path: {onnx_path}")
         # print(f"new model: {model_name} + {save_path}")
         # update_model_status(model_name)
-        if onnx_path:
-            upload_to_s3(str(onnx_path), "candidate", f"{model_name}.onnx")
+        # if onnx_path:
+        #     upload_to_s3(str(onnx_path), "candidate", f"{model_name}.onnx")
         print(model_name)
     wandb.finish()
