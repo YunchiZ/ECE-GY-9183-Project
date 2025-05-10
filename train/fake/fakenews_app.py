@@ -54,6 +54,11 @@ def compute_metrics(eval_pred):
     }
 
 def train_fn(config, model, train_dataset, eval_dataset, run_name):
+    try:
+        wandb.finish()
+    except:
+        pass
+    
     trial_id = session.get_trial_name()
     wandb.init(
         project="Mlops-fakenews",

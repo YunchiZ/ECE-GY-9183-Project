@@ -79,6 +79,11 @@ def compute_metrics(eval_pred):
         return {"rouge1": 0.0, "rouge2": 0.0, "rougeL": 0.0, "gen_len": 0.0}
 
 def train_fn(config, model, train_dataset, eval_dataset, run_name):
+    try:
+        wandb.finish()
+    except:
+        pass
+    
     trial_id = session.get_trial_name()
     wandb.init(
         project="Mlops-summary",
