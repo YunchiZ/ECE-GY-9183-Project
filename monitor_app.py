@@ -299,20 +299,18 @@ def database_merge(type: str):
     )
 
     base_query = """
-    SELECT 
-        p.id,
-        p.text AS predictions_input,
-        p.pred AS predictions_pred,
-        l.text AS label_input,
-        l.pred1 AS label_label1,
-        l.pred2 AS label_label2,
-        l.pred3 AS label_label3
-    FROM 
+    SELECT
+    p.id,
+    p.text AS predictions_input,
+    p.pred AS predictions_pred,
+    l.text AS label_input,
+    l.pred1 AS label_label1,
+    l.pred2 AS label_label2,
+    l.pred3 AS label_label3
+    FROM
         predictions p
-    JOIN 
+    JOIN
         label_db.label l ON p.id = l.id
-        WHERE 
-        p.pred IS NOT NULL
     """
 
     results = deploy_cur.execute(base_query).fetchall()
@@ -321,18 +319,21 @@ def database_merge(type: str):
     INSERT INTO task1_data (
         id, predictions_input, predictions_pred, label_input, label_label1
     ) VALUES (?, ?, ?, ?, ?)
+    WHERE label_label1 IS NOT NULL
     """
 
     task2_insert = """
     INSERT INTO task2_data (
         id, predictions_input, predictions_pred, label_input, label_label2
     ) VALUES (?, ?, ?, ?, ?)
+    WHERE label_label2 IS NOT NULL
     """
 
     task3_insert = """
     INSERT INTO task3_data (
         id , predictions_input, predictions_pred, label_input, label_label3
     ) VALUES (?, ?, ?, ?, ?)
+    WHERE label_label3 IS NOT NULL
     """
 
     task1_data = [(row[0], row[1], row[2], row[3], row[4]) for row in results]
