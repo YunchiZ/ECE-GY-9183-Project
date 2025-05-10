@@ -117,6 +117,21 @@ def read_from_minio():
         object_name = "evaluation.db"
         temp_db = "/tmp/evaluation_temp.db"
         
+        # check if MinIO bucket exists
+        existing_buckets = s3_client.list_buckets()
+        bucket_names = [b['Name'] for b in existing_buckets['Buckets']]
+        if MINIO_BUCKET not in bucket_names:
+            logging.error(f"MinIO bucket '{MINIO_BUCKET}' not found.")
+            return None
+        
+        # check if evaluation.db file exists in the bucket
+        objects = s3_client.list_objects_v2(Bucket=MINIO_BUCKET)
+        if "Contents" not in objects or not any(obj["Key"] == object_name for obj in objects["Contents"]):
+            logging.error(f"File '{object_name}' not found in bucket '{MINIO_BUCKET}'.")
+            return None
+
+        logging.info(f"Found '{object_name}' in bucket '{MINIO_BUCKET}', starting download...")
+        
         # Download file from MinIO
         s3_client.download_file(MINIO_BUCKET, object_name, temp_db)
         
@@ -145,7 +160,54 @@ def read_from_minio():
     except Exception as e:
         logging.error(f"Error reading from MinIO: {str(e)}")
         return None
+    
+def read_from_minio():
+    """Read SQLite data from MinIO with bucket and file existence check"""
+    object_name = "evaluation.db"
+    temp_db = "/tmp/evaluation_temp.db"
 
+    try:
+        # check if MinIO bucket exists
+        existing_buckets = s3_client.list_buckets()
+        bucket_names = [b['Name'] for b in existing_buckets['Buckets']]
+        if MINIO_BUCKET not in bucket_names:
+            logging.error(f"MinIO bucket '{MINIO_BUCKET}' not found.")
+            return None
+        
+        # check if evaluation.db file exists in the bucket
+        objects = s3_client.list_objects_v2(Bucket=MINIO_BUCKET)
+        if "Contents" not in objects or not any(obj["Key"] == object_name for obj in objects["Contents"]):
+            logging.error(f"File '{object_name}' not found in bucket '{MINIO_BUCKET}'.")
+            return None
+
+        logging.info(f"Found '{object_name}' in bucket '{MINIO_BUCKET}', starting download...")
+
+        # download file
+        s3_client.download_file(MINIO_BUCKET, object_name, temp_db)
+
+        # read SQLite file
+        conn = sqlite3.connect(temp_db)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+
+        all_data = {}
+        for table in tables:
+            table_name = table[0]
+            query = f"SELECT * FROM {table_name}"
+            data = pd.read_sql_query(query, conn)
+            all_data[table_name] = data
+
+        conn.close()
+        os.remove(temp_db)
+        logging.info("Successfully read and parsed evaluation.db from MinIO.")
+        return all_data
+
+    except Exception as e:
+        logging.error(f"Error reading from MinIO: {str(e)}")
+        if os.path.exists(temp_db):
+            os.remove(temp_db)
+        return None    
 
 @app.route("/etl", methods=["POST"])
 def trigger_etl():
