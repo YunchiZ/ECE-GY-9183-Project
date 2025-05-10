@@ -29,6 +29,7 @@ from minio import Minio
 
 
 app = Flask(__name__)
+
 thread_lock = threading.Lock()
 status_lock = threading.Lock()
 metric_lock = threading.Lock()
@@ -115,7 +116,7 @@ data_shift_metrics = {"word_counts": [], "label_counts": []}
 # ================================================ Section Divider
 
 
-def write_to_minio(file_path, object_name=None, bucket_name="etl_data"):
+def write_to_minio(file_path, object_name=None, bucket_name="etl-data"):
     """
     :param file_path: local file path
     :param bucket_name: minio bucket name
@@ -195,6 +196,22 @@ def notify(docker, index, notification_type):
         return 500
 
 
+def is_datashift():
+    """
+    Check if data shift occurs
+    :return: bool
+    """
+    global data_shift_metrics
+
+    labels = data_shift_metrics["label_counts"]
+
+    labels_min, labels_max = min(labels), max(labels)
+    if labels_max - labels_min > 0.1 * labels_min:
+        return True
+    else:
+        return False
+
+
 # ================================================ All database-related functions
 # Actually, the frontend container will put labels into different task name databases according to the label ID, so the Monitor container doesn't need to match them
 # These functions must ensure:
@@ -223,15 +240,6 @@ def database_merge(type: str):
     # index determines task type, create corresponding form
     # $ Determine database access path based on deploy_data_dir and serving[index]
     # $ Determine user behavior label library/file access path based on label_dir and ?
-
-    # with open(LOCK_file_db, "r") as f:
-    #     lock_data = json.load(f)
-    #     lock = lock_data.get("LOCK", False)
-    # while lock:
-    #     with open(LOCK_file_db, "r") as f:
-    #         lock_data = json.load(f)
-    #         lock = lock_data.get("LOCK", False)
-    #         time.sleep(1)
 
     new_db_path = os.path.join(deploy_data_dir, "evaluation.db")
 
@@ -303,6 +311,8 @@ def database_merge(type: str):
         predictions p
     JOIN 
         label_db.label l ON p.id = l.id
+        WHERE 
+        p.pred IS NOT NULL
     """
 
     results = deploy_cur.execute(base_query).fetchall()
@@ -633,9 +643,9 @@ def monitor():
 
                 # $ Access global metric variables about data distribution data_distribution
                 # $ Perform similar operations: analyze the average of previous metrics, then add data variable to become part of the record
-            data_shift = (
-                False  # This is for code completeness, temporarily written this way
-            )
+            data_shift = is_datashift()
+
+            # This is for code completeness, temporarily written this way
             # 5) Then enter critical condition judgment: whether frontend statistical error rate exceeds threshold / whether data drift occurs / whether performance decays
             # Actually, for the efficiency of this part of the process, critical condition judgment has priority, but since all need to be reported to prometheus, all three need to be judged
             # If the critical condition is triggered, trigger ETL according to LOCK.json and alert prometheus
