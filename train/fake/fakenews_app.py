@@ -22,7 +22,7 @@ import subprocess
 from datetime import datetime
 from transformers.onnx import export
 from transformers.onnx.features import FeaturesManager
-import boto3
+# import boto3
 
 def preprocess(examples):
     return tokenizer(
@@ -337,18 +337,18 @@ def evaluate_offline():
     ])
     return retcode
 
-def upload_to_s3(local_path, bucket_name, s3_key):
-    try:
-        s3 = boto3.client(
-            "s3",
-            endpoint_url=os.getenv("MINIO_ENDPOINT"),
-            aws_access_key_id=os.getenv("MINIO_ACCESS_KEY"),
-            aws_secret_access_key=os.getenv("MINIO_SECRET_KEY")
-        )
-        s3.upload_file(local_path, bucket_name, s3_key)
-        print(f"Uploaded {local_path} to s3://{bucket_name}/{s3_key}")
-    except Exception as e:
-        print(f"Failed to upload to S3: {e}")
+# def upload_to_s3(local_path, bucket_name, s3_key):
+#     try:
+#         s3 = boto3.client(
+#             "s3",
+#             endpoint_url=os.getenv("MINIO_ENDPOINT"),
+#             aws_access_key_id=os.getenv("MINIO_ACCESS_KEY"),
+#             aws_secret_access_key=os.getenv("MINIO_SECRET_KEY")
+#         )
+#         s3.upload_file(local_path, bucket_name, s3_key)
+#         print(f"Uploaded {local_path} to s3://{bucket_name}/{s3_key}")
+#     except Exception as e:
+#         print(f"Failed to upload to S3: {e}")
 
 if __name__ == '__main__':
     train_dir = Path(__file__).resolve().parent.parent
@@ -439,8 +439,8 @@ if __name__ == '__main__':
         onnx_path = export_model_to_onnx(best_model, tokenizer, save_path, model_name)
         print(f"New model exported: {model_name}, path: {onnx_path}")
         # update_model_status(model_name)
-        if onnx_path:
-            upload_to_s3(str(onnx_path), "candidate", f"{model_name}.onnx")
+        # if onnx_path:
+        #     upload_to_s3(str(onnx_path), "candidate", f"{model_name}.onnx")
         print(model_name)
         
     

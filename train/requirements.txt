@@ -190,3 +190,4 @@ widgetsnbextension==4.0.13
 xxhash==3.5.0
 yarl==1.19.0
 zstandard==0.22.0
+boto3==1.38.13
