@@ -31,11 +31,11 @@ services:
       dockerfile: dockerfile
     container_name: summary-container
     command: python summarize/summary_app.py
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: [gpu]
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - capabilities: [gpu]
     runtime: nvidia
     volumes:
       - ./train:/app
