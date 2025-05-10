@@ -46,7 +46,7 @@ def preprocess_function(examples, tokenizer):
     model_inputs["highlights"] = examples["highlights"]
     return model_inputs
 
-def compute_metrics(eval_pred):
+def compute_metrics(eval_pred, tokenizer):
     try:
         rouge = evaluate.load('rouge')
         predictions = eval_pred.predictions
@@ -124,7 +124,7 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        compute_metrics=compute_metrics,
+        compute_metrics=compute_metrpartial(compute_metrics, tokenizer=tokenizer),ics,
     )
     try:
         trainer.train()
@@ -344,7 +344,13 @@ def summary_run(WANDB_KEY):
     current_dir = os.getcwd()
     storage_path = f"file://{current_dir}/ray_results/summary_results"
 
-    train_fn_with_params = tune.with_parameters(train_fn, model=model, train_dataset=train_subset, eval_dataset=eval_subset, run_name = run_name)
+    train_fn_with_params = tune.with_parameters(train_fn, 
+                                                model=model, 
+                                                train_dataset=train_subset, 
+                                                eval_dataset=eval_subset, 
+                                                run_name = run_name,
+                                                tokenizer=tokenizer)
+                                                
     ray.init(_temp_dir=f"{train_dir}/ray_tmp", ignore_reinit_error=True)
     analysis = tune.run(
         train_fn_with_params,
@@ -365,7 +371,7 @@ def summary_run(WANDB_KEY):
     retcode = evaluate_offline()
 
     onnx_path = "fail"
-    
+
     if retcode != 0:
         logger.warning("test failed")
     else:
