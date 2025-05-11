@@ -1,9 +1,14 @@
 #!/bin/bash
 
-set -e  # Exit immediately if any command fails
+set -e
 
 DEVICE="/dev/vdb1"
 MOUNT_POINT="/mnt/block"
+
+if [ ! -e "$DEVICE" ]; then
+  echo "[ERROR] $DEVICE does not exist. Is the block volume attached and partitioned?"
+  exit 1
+fi
 
 echo "[INFO] Creating mount point: $MOUNT_POINT"
 sudo mkdir -p $MOUNT_POINT
