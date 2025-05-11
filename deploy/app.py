@@ -1,18 +1,19 @@
 import threading, numpy as np
+
 # from threading import Thread
 from fastapi import FastAPI, Response
 from starlette.types import ASGIApp, Scope, Receive, Send
 from contextlib import asynccontextmanager
 from prometheus_client import Histogram, generate_latest, CONTENT_TYPE_LATEST, Gauge
 from pydantic import BaseModel, constr, field_validator, Field
-from db_opt import *      # Contains all the functions needed for SQLite database operations
-from func import *        # Contains functions for sending information to external Docker containers & modifying `model_status.json`
+from db_opt import *  # Contains all the functions needed for SQLite database operations
+from func import *  # Contains functions for sending information to external Docker containers & modifying `model_status.json`
 from preprocess import *  # Contains functions for filtering and tokenizing information when responding to API
-from Triton import *      # Contains Triton inference and Triton weight loading functions
+from Triton import *  # Contains Triton inference and Triton weight loading functions
 
 
-train_data_dir    = '/app/models'
-deploy_data_dir   = '/app/deploy_data'
+train_data_dir = "/app/models"
+deploy_data_dir = "/app/deploy_data"
 
 
 # ---------------- Logging Initialization ----------------
@@ -20,7 +21,8 @@ log_file = os.path.join(train_data_dir, "app.log")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler(log_file),logging.StreamHandler()]
+    filename="/app/logs/app.log",
+    filemode="a",
 )
 
 # --------------------------
@@ -51,7 +53,7 @@ batch_lock2 = threading.Lock()
 count_lock0 = threading.Lock()
 count_lock1 = threading.Lock()
 count_lock2 = threading.Lock()
-api_lock    = threading.Lock()
+api_lock = threading.Lock()
 
 api_call_count_0, api_call_count_1, api_call_count_2 = 0, 0, 0
 # The calculation of api call count is not incremented immediately but based on the buffer.
@@ -64,11 +66,12 @@ _result0_buffer, _result1_buffer, _result2_buffer = [], [], []
 # Why not record each result individually? Because API calls need to be efficient; frequent use of `batch_lock` will cause program blocking.
 # So, the API returns the result to the front-end user first, and then records the results in a unified manner.
 
+
 # ---------------- Initialization ----------------
 def init():  # All initialization content
     """
-        Initialize global variable `serving` for the API
-        & establish corresponding database
+    Initialize global variable `serving` for the API
+    & establish corresponding database
     """
     # Initialize all databases and tables at once
     try:
@@ -84,11 +87,12 @@ async def lifespan(_: FastAPI):
     MAIN_LOOP = asyncio.get_running_loop()
     logging.info(f"MAIN_LOOP initialized: {MAIN_LOOP}")
     global_status_visual(stage, serving_name, candidate_name)
-    init()   # Called before the application starts
+    init()  # Called before the application starts
     try:
         yield  # Application runtime
     finally:
         pass  # Optional cleanup: close DB connections, flush logs, etc.
+
 
 app = FastAPI(title="deploy-gateway", version="1.0", lifespan=lifespan)
 
@@ -102,67 +106,86 @@ class LatencyMiddleware:
     Record the start time when entering the handler,
     and observe the cost when sending the last body block (more_body == False).
     """
-    def __init__(self, application: ASGIApp, observer):
-        self.app = application   # Wrapped FastAPI core
-        self.observer = observer # Any callable object, e.g., Histogram.observe
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send): # Coroutine function
+    def __init__(self, application: ASGIApp, observer):
+        self.app = application  # Wrapped FastAPI core
+        self.observer = observer  # Any callable object, e.g., Histogram.observe
+
+    async def __call__(
+        self, scope: Scope, receive: Receive, send: Send
+    ):  # Coroutine function
         """
         scope: Metadata of the request (method, path, headers, etc.)
         receive: await receive() to get client data
         send: await send(message) to send response
         """
-        if scope["type"] != "http":       # Only count HTTP requests
+        if scope["type"] != "http":  # Only count HTTP requests
             return await self.app(scope, receive, send)
 
         start = time.perf_counter()
 
         async def send_wrapper(message):
             # Starlette / Uvicorn splits the response into several body blocks
-            if (message["type"] == "http.response.body"
-                    and not message.get("more_body", False)):
+            if message["type"] == "http.response.body" and not message.get(
+                "more_body", False
+            ):
                 cost = time.perf_counter() - start
-                self.observer(cost)       # <── Record TTLB to Prometheus
+                self.observer(cost)  # <── Record TTLB to Prometheus
             await send(message)
 
         return await self.app(scope, receive, send_wrapper)
 
+
 # ---------------- Prometheus Visualization ----------------
 # TTLB: the time length between "just when HTTP received" and "last byte sent" - a precise metric
-ttlb_hist = Histogram("predict_ttlb_seconds","Time-To-Last-Byte of /predict")
+ttlb_hist = Histogram("predict_ttlb_seconds", "Time-To-Last-Byte of /predict")
 # client  →  Middleware(timer on)  →  FastAPI routing  → timer on → business logic → |
 # client  ←  Middleware(timer off) ←  FastAPI routing  ← time off ← business logic ← |
 
 # service_hist: the time length between "after HTTP received" and "before returning result" - a rough metric
 # service_hist = Histogram("predict_service_time_seconds","handler enter -> before return")
 # candidate_hist = Histogram("candidate_latency_seconds","shadow model latency")
-infer_hist = Histogram("model_inference_seconds","Latency of model inference",
-                        labelnames=("model", "role"))   # role = serving | candidate
+infer_hist = Histogram(
+    "model_inference_seconds",
+    "Latency of model inference",
+    labelnames=("model", "role"),
+)  # role = serving | candidate
 # client  →  Middleware  →  FastAPI routing  → timer on → business logic → |
 # client  ←  Middleware  ←  FastAPI routing  ← time off ← business logic ← |
 
 # Register pluggable hooks - Middleware LatencyMiddleware:
 app.add_middleware(LatencyMiddleware, observer=ttlb_hist.observe)  # type: ignore
 
-task_stage_gauge = Gauge("task_stage_info","Current stage of each task",
-                         labelnames=("task", "stage"))
-serving_model_gauge = Gauge("serving_model_info","Current serving model of each task",
-                            labelnames=("task", "model"))
-candidate_model_gauge = Gauge("candidate_model_info","Current candidate model of each task",
-                              labelnames=("task", "model"))
+task_stage_gauge = Gauge(
+    "task_stage_info", "Current stage of each task", labelnames=("task", "stage")
+)
+serving_model_gauge = Gauge(
+    "serving_model_info",
+    "Current serving model of each task",
+    labelnames=("task", "model"),
+)
+candidate_model_gauge = Gauge(
+    "candidate_model_info",
+    "Current candidate model of each task",
+    labelnames=("task", "model"),
+)
 
-MAX        = 65_535
+MAX = 65_535
 TASK_NAMES = ("summary", "identification", "classification")
-_counter     = 0
+_counter = 0
 _counter_lock = threading.Lock()
+
+
 def _next_counter() -> int:
     global _counter
     with _counter_lock:
         _counter = (_counter + 1) % MAX
         return _counter
-def global_status_visual(stage_lst: list[str],
-                           serving_lst: list[str],
-                           candidate_lst: list[str | None]) -> None:
+
+
+def global_status_visual(
+    stage_lst: list[str], serving_lst: list[str], candidate_lst: list[str | None]
+) -> None:
     """
     Write the current global status to Prometheus.
     Should be called after acquiring `status_lock` and completing global variable updates.
@@ -178,7 +201,10 @@ def global_status_visual(stage_lst: list[str],
 
 # ---------------- Associated Functions ----------------
 
-def record_result(serving_load, candidate_load, status):  # Pure Python logic, set as synchronous `def`, no need for async
+
+def record_result(
+    serving_load, candidate_load, status
+):  # Pure Python logic, set as synchronous `def`, no need for async
     # Unified behavior function instead of being guided by a specific index
     """
     After each API call, three result groups (to be encapsulated into payloads by the main program)
@@ -227,21 +253,43 @@ def record_result(serving_load, candidate_load, status):  # Pure Python logic, s
                 # Note: In the canary phase, the monitor only performs data merging,
                 # without any analysis or alarms. It only accepts statistical alarms from the front end.
                 with count_lock0:
-                    api_call_count_0 += BATCH  # Update `api_call_count` every 500 samples
+                    api_call_count_0 += (
+                        BATCH  # Update `api_call_count` every 500 samples
+                    )
                     if api_call_count_0 >= 6000:
                         if MAIN_LOOP:
-                            asyncio.run_coroutine_threadsafe(canary_to_normal(0), MAIN_LOOP)
+                            asyncio.run_coroutine_threadsafe(
+                                canary_to_normal(0), MAIN_LOOP
+                            )
                         else:
-                            logging.error("MAIN_LOOP not ready, skip canary→normal trigger")
+                            logging.error(
+                                "MAIN_LOOP not ready, skip canary→normal trigger"
+                            )
                 threshold = True
         if threshold:
             if status[0] in ("shadow", "canary"):
                 _pred = _result0_buffer.copy()
                 _result0_buffer = []
-                threading.Thread(target=result_to_db, args=(True, _pred, 0, None,)).start()
+                threading.Thread(
+                    target=result_to_db,
+                    args=(
+                        True,
+                        _pred,
+                        0,
+                        None,
+                    ),
+                ).start()
             pred = result0_buffer.copy()
             result0_buffer = []
-            threading.Thread(target=result_to_db, args=(False, pred, 0, status[0],)).start()
+            threading.Thread(
+                target=result_to_db,
+                args=(
+                    False,
+                    pred,
+                    0,
+                    status[0],
+                ),
+            ).start()
     threshold = False
 
     with batch_lock1:
@@ -261,18 +309,38 @@ def record_result(serving_load, candidate_load, status):  # Pure Python logic, s
                     api_call_count_1 += BATCH
                     if api_call_count_1 >= 6000:
                         if MAIN_LOOP:
-                            asyncio.run_coroutine_threadsafe(canary_to_normal(1), MAIN_LOOP)
+                            asyncio.run_coroutine_threadsafe(
+                                canary_to_normal(1), MAIN_LOOP
+                            )
                         else:
-                            logging.error("MAIN_LOOP not ready, skip canary→normal trigger")
+                            logging.error(
+                                "MAIN_LOOP not ready, skip canary→normal trigger"
+                            )
                 threshold = True
         if threshold:
             if status[1] in ("shadow", "canary"):
                 _pred = _result1_buffer.copy()
                 _result1_buffer = []
-                threading.Thread(target=result_to_db, args=(True, _pred, 1, None,)).start()
+                threading.Thread(
+                    target=result_to_db,
+                    args=(
+                        True,
+                        _pred,
+                        1,
+                        None,
+                    ),
+                ).start()
             pred = result1_buffer.copy()
             result1_buffer = []
-            threading.Thread(target=result_to_db, args=(False, pred, 1, status[1],)).start()
+            threading.Thread(
+                target=result_to_db,
+                args=(
+                    False,
+                    pred,
+                    1,
+                    status[1],
+                ),
+            ).start()
     threshold = False
 
     with batch_lock2:
@@ -292,18 +360,38 @@ def record_result(serving_load, candidate_load, status):  # Pure Python logic, s
                     api_call_count_2 += BATCH
                     if api_call_count_2 >= 6000:
                         if MAIN_LOOP:
-                            asyncio.run_coroutine_threadsafe(canary_to_normal(2), MAIN_LOOP)
+                            asyncio.run_coroutine_threadsafe(
+                                canary_to_normal(2), MAIN_LOOP
+                            )
                         else:
-                            logging.error("MAIN_LOOP not ready, skip canary→normal trigger")
+                            logging.error(
+                                "MAIN_LOOP not ready, skip canary→normal trigger"
+                            )
                 threshold = True
         if threshold:
             if status[2] in ("shadow", "canary"):
                 _pred = _result2_buffer.copy()
                 _result2_buffer = []
-                threading.Thread(target=result_to_db, args=(True, _pred, 2, None,)).start()
+                threading.Thread(
+                    target=result_to_db,
+                    args=(
+                        True,
+                        _pred,
+                        2,
+                        None,
+                    ),
+                ).start()
             pred = result2_buffer.copy()
             result2_buffer = []
-            threading.Thread(target=result_to_db, args=(False, pred, 2, status[2],)).start()
+            threading.Thread(
+                target=result_to_db,
+                args=(
+                    False,
+                    pred,
+                    2,
+                    status[2],
+                ),
+            ).start()
 
 
 def result_to_db(cand, pred, index, status):
@@ -325,7 +413,9 @@ def result_to_db(cand, pred, index, status):
 
     # 4) Notify the monitor container for monitoring
     try:
-        asyncio.run(notify_docker("monitor", "monitor", {"index": index, "status": status}))
+        asyncio.run(
+            notify_docker("monitor", "monitor", {"index": index, "status": status})
+        )
     except Exception as e:
         logging.warning("notify_docker failed: %s", e)
 
@@ -361,7 +451,9 @@ async def canary_to_normal(ind: int):
     old_model_name, old_model_version = split_model_tag(old_model)
     # Wait for Triton to unload the results
     await triton_config(old_model_name, old_model_version, "unload")
-    await notify_docker("monitor", "init", {"type": "serving", "model": new_serving, "index": ind})
+    await notify_docker(
+        "monitor", "init", {"type": "serving", "model": new_serving, "index": ind}
+    )
     weight_clean("replace", old_model)
 
 
@@ -369,7 +461,9 @@ async def canary_to_normal(ind: int):
 # Route1 -> Status Transfer
 class NotifyPayload(BaseModel):
     type: Literal["shadow", "canary", "normal"]
-    index: Literal[0, 1, 2]  # Passing "0", "1", or "2" will automatically be converted to int
+    index: Literal[
+        0, 1, 2
+    ]  # Passing "0", "1", or "2" will automatically be converted to int
     model: constr(min_length=3)
 
 
@@ -378,9 +472,7 @@ async def notify(payload: NotifyPayload):
     """Receive stage transition notifications from train/monitor Docker containers."""
     logging.info("Received notify: %s", payload)
     # Non-blocking for the client: toss the real logic into the event loop.
-    asyncio.create_task(stage_transfer(payload.type,
-                                       payload.index,
-                                       payload.model))
+    asyncio.create_task(stage_transfer(payload.type, payload.index, payload.model))
     return {"msg": "accepted"}
 
 
@@ -395,10 +487,15 @@ async def stage_transfer(cmd, index, model):
 
         ok = await asyncio.to_thread(download_candidate_weights, model)
         if not ok:
-            logging.error("[stage_transfer] unable to download candidate weight '%s', abort.", model)
+            logging.error(
+                "[stage_transfer] unable to download candidate weight '%s', abort.",
+                model,
+            )
             return
 
-        _pass = await asyncio.to_thread(load_test, model)  # Wait for load test (run in thread pool)
+        _pass = await asyncio.to_thread(
+            load_test, model
+        )  # Wait for load test (run in thread pool)
         if _pass:
             await triton_config(model_name=model_name, version=version, action="load")
             with status_lock:
@@ -409,11 +506,17 @@ async def stage_transfer(cmd, index, model):
                 candidate_ss = candidate_name.copy()
             global_status_visual(stage_ss, serving_ss, candidate_ss)
             transfer_info = {"type": "candidate", "model": model, "index": index}
-            asyncio.create_task(notify_docker("monitor", "init", transfer_info))  # No result needed
-            logging.info("Candidate model has passed the load test. Operations: status change & notify monitor.")
+            asyncio.create_task(
+                notify_docker("monitor", "init", transfer_info)
+            )  # No result needed
+            logging.info(
+                "Candidate model has passed the load test. Operations: status change & notify monitor."
+            )
         else:  # Failed load test: unregister from model_status.json, delete weights, and log the operation
             weight_clean("revoke", model)
-            logging.info("Candidate model failed in the load test. Operations: revoke on model_status.json.")
+            logging.info(
+                "Candidate model failed in the load test. Operations: revoke on model_status.json."
+            )
 
     elif cmd == "canary":  # Newly trained candidate model passed shadow evaluation
         # Enter the canary stage
@@ -446,7 +549,9 @@ async def stage_transfer(cmd, index, model):
             candidate_ss = candidate_name.copy()
         global_status_visual(stage_ss, serving_ss, candidate_ss)
         # 2) Notify Triton to unload the new model weights (no need to wait here)
-        asyncio.create_task(triton_config(model_name=model_name, version=version, action="unload"))
+        asyncio.create_task(
+            triton_config(model_name=model_name, version=version, action="unload")
+        )
         # 3) Reset candidate prediction results in memory
         if index == 0:
             with batch_lock0:
@@ -465,9 +570,14 @@ async def stage_transfer(cmd, index, model):
 
 # Route 2 -> API Service
 
+
 class PredictIn(BaseModel):  # Lightweight validation for BFF
-    text: constr(min_length=10 * 5, max_length=1000 * 12) = Field(...)  # 10~1000 words; 50~12000 characters
-    prediction_id: int = Field(..., gt=0, description="Prediction ID must be a positive integer.")
+    text: constr(min_length=10 * 5, max_length=1000 * 12) = Field(
+        ...
+    )  # 10~1000 words; 50~12000 characters
+    prediction_id: int = Field(
+        ..., gt=0, description="Prediction ID must be a positive integer."
+    )
 
     # BaseModel is a Pydantic type (used for mapping JSON to Python objects + auto-validation).
     # If the input exceeds 12000 characters, it will automatically return an error code using `constr`.
@@ -523,7 +633,9 @@ async def predict(data: PredictIn):
 
         # ---------- Canary: Use probability `p` to route to candidate --------------------
         if stg[idx] == "canary":
-            if idx == 0:  # No need for global thread lock when only reading global variables
+            if (
+                idx == 0
+            ):  # No need for global thread lock when only reading global variables
                 n_calls = api_call_count_0
             elif idx == 1:
                 n_calls = api_call_count_1
@@ -561,25 +673,41 @@ async def predict(data: PredictIn):
             "id": data.prediction_id,
             "text": data.text,  # Store the original text for all three tasks
             "pred": pred_text,
-            "time": round(t_elapsed, 4)
+            "time": round(t_elapsed, 4),
         }
-        frontend_res[model.lower()] = pred_text  # Return information to the frontend, note it's in lowercase
+        frontend_res[model.lower()] = (
+            pred_text  # Return information to the frontend, note it's in lowercase
+        )
 
     # 4. Model inference
     await asyncio.gather(*(infer(i) for i in range(3)))
 
     # 5. Task creation
-    asyncio.create_task(predict_(orig_text=data.text, pred_id=data.prediction_id, stage_snapshot=stg,
-                                 serving_res=serving_res, candidate_res=candidate_res,
-                                 candidate_models=cand, payloads=payloads))
+    asyncio.create_task(
+        predict_(
+            orig_text=data.text,
+            pred_id=data.prediction_id,
+            stage_snapshot=stg,
+            serving_res=serving_res,
+            candidate_res=candidate_res,
+            candidate_models=cand,
+            payloads=payloads,
+        )
+    )
 
     # 6. Return to front-end
     return {"prediction_id": data.prediction_id, **frontend_res}
 
 
-async def predict_(orig_text: str, pred_id: int, stage_snapshot: list[str],
-                   serving_res: list[dict], candidate_res: list[dict],
-                   candidate_models, payloads: dict):
+async def predict_(
+    orig_text: str,
+    pred_id: int,
+    stage_snapshot: list[str],
+    serving_res: list[dict],
+    candidate_res: list[dict],
+    candidate_models,
+    payloads: dict,
+):
     async def shadow_infer(idx: int):
         tag = candidate_models[idx]
         if stage_snapshot[idx] == "shadow" and tag:
@@ -606,7 +734,7 @@ async def predict_(orig_text: str, pred_id: int, stage_snapshot: list[str],
                 "id": pred_id,
                 "text": orig_text,
                 "pred": pred,
-                "time": round(t_elapsed, 4)
+                "time": round(t_elapsed, 4),
             }
 
     await asyncio.gather(*(shadow_infer(i) for i in range(3)))
@@ -617,7 +745,7 @@ async def predict_(orig_text: str, pred_id: int, stage_snapshot: list[str],
         record_result,
         serving_res,
         candidate_res,
-        stage_snapshot
+        stage_snapshot,
     )
 
 
@@ -628,7 +756,3 @@ def metrics():
     Expose Prometheus metrics for monitoring.
     """
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
-
-
-
-
