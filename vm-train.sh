@@ -1,11 +1,7 @@
 chmod +x mount_object_store_train.sh
 ./mount_object_store_train.sh
-
-
 #!/bin/bash
-
 set -e  # exit when mistake
-
 # a. install drive
 sudo apt-get update   # renew apt-get
 sudo apt-get -y install ca-certificates curl  # install license & install tool curl
