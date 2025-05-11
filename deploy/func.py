@@ -3,6 +3,7 @@ from botocore.exceptions import ClientError
 from typing import Any, Dict, Literal
 import time
 import random
+from httpx import Response
 
 
 TRAIN_DATA_DIR = "/app/models"
@@ -26,7 +27,7 @@ async def notify_docker(docker: str, route: str, payload: Dict[str, Any],
     for attempt in range(1, retries + 1):
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
-                r = await client.post(url, json=payload)
+                r: Response = await client.post(url, json=payload)
                 if r.is_success:                # 2xx
                     logging.info("[notify] %s %s → %s (try %d)",docker, payload, r.status_code, attempt)
                     return True

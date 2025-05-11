@@ -1,49 +1,60 @@
 version: "3.8"
 
 x-minio-env: &minio-env
-  - MINIO_URL=http://${FIP_OPS}:9000
-  - MINIO_ACCESS_KEY=minioadmin
-  - MINIO_SECRET_KEY=minioadmin123
+    MINIO_URL: http://${FIP_OPS}:9000
+    MINIO_ACCESS_KEY: minioadmin
+    MINIO_SECRET_KEY: minioadmin123
 
 services:
-  triton:
-    image: nvcr.io/nvidia/tritonserver:23.09-py3
-    runtime: nvidia
-    shm_size: "8g"
-    command: >
-      tritonserver --model-repository=/models
-                   --model-control-mode=explicit
-                   --strict-model-config=true
-    ports: ["8002:8002"]
-    volumes:
-      - /mnt/object/models:/models    
-    networks: [mlops]
+    triton:
+        image: nvcr.io/nvidia/tritonserver:23.09-py3
+        runtime: nvidia
+        shm_size: "8g"
+        command: >
+            tritonserver --model-repository=/models
+                         --model-control-mode=explicit
+                         --strict-model-config=true
+        ports: ["8002:8002"]
+        volumes:
+            - /mnt/object/models:/models
+        # cpus: "32"
+        # cpu_shares: 2048
+        networks: [mlops]
+        restart: on-failure
 
-  deploy:
-    build: ./deploy
-    image: arcus00/infolens:deploy-0.0.1
-    environment: *minio-env
-    volumes:
-      - /mnt/object/models:/app/models               
-      - /mnt/object/deploy_data:/app/deploy_data 
-    ports: ["8080:8000"]
-    depends_on: [triton]
-    networks: [mlops]
+    deploy:
+        build:
+            context: ./deploy
+            dockerfile: Dockerfile.deploy
+        environment:
+            <<: *minio-env
+        volumes:
+            - /mnt/object/models:/app/models
+            - /mnt/object/deploy_data:/app/deploy_data
+        ports: ["8080:8000"]
+        depends_on: [triton]
+        # cpus: "8"
+        # cpu_shares: 512
+        restart: always
+        networks: [mlops]
 
-  monitor:
-    build: ./monitor
-    image: arcus00/infolens:monitor-0.0.1
-    environment:
-      - ETL_URL=http://${FIP_TRAIN}:8010
-      <<: *minio-env
-    volumes:
-      - /mnt/object/deploy_data:/app/deploy_data     
-      - /mnt/object/monitor_data:/app/monitor_data 
-      - /mnt/object/labels:/app/labels                       
-    ports: ["8030:8000"]
-    depends_on: [deploy]
-    networks: [mlops]
+    monitor:
+        build:
+            context: ./monitor
+            dockerfile: Dockerfile.monitor
+        environment:
+            <<: *minio-env
+            ETL_URL: http://${FIP_TRAIN}:8010
+        volumes:
+            - /mnt/object/deploy_data:/app/deploy_data
+            - /mnt/object/monitor_data:/app/monitor_data
+        ports: ["8030:8000"]
+        depends_on: [deploy]
+        # cpus: "8"
+        # cpu_shares: 512
+        restart: always
+        networks: [mlops]
 
 networks:
-  mlops:
-    driver: bridge
+    mlops:
+        driver: bridge

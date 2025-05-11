@@ -27,8 +27,8 @@ logging.basicConfig(
 # | ID | Model  |  Mission |
 # --------------------------
 # | 0  |  BART  |  Summary |
-# | 1  |  XLNet | Classify |
-# | 2  |  BERT  | Identify |
+# | 1  |  XLNet | Identify |
+# | 2  |  BERT  | Classify |
 # --------------------------
 
 # ---------------- Global Variables ----------------
@@ -152,7 +152,7 @@ candidate_model_gauge = Gauge("candidate_model_info","Current candidate model of
                               labelnames=("task", "model"))
 
 MAX        = 65_535
-TASK_NAMES = ("summary", "classification", "identification")
+TASK_NAMES = ("summary", "identification", "classification")
 _counter     = 0
 _counter_lock = threading.Lock()
 def _next_counter() -> int:

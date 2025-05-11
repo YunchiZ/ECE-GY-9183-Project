@@ -1,98 +1,97 @@
 version: "3.8"
 
 services:
-# -------------------------------------------------------------------- #
-#  MinIO
-# -------------------------------------------------------------------- #
-  minio:
-    image: minio/minio:RELEASE.2024-05-01T19-58-23Z
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER:     minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
-    volumes:
-      - /mnt/block/minio_data:/data        
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    networks: [mlops]
+    # -------------------------------------------------------------------- #
+    #  MinIO
+    # -------------------------------------------------------------------- #
+    minio:
+        image: minio/minio:latest
+        command: server /data --console-address ":9001"
+        environment:
+            MINIO_ROOT_USER: minioadmin
+            MINIO_ROOT_PASSWORD: minioadmin123
+        volumes:
+            - /mnt/block/minio_data:/data
+        ports:
+            - "9000:9000"
+            - "9001:9001"
+        networks: [mlops]
 
-# -------------------------------------------------------------------- #
-#  Prometheus & Grafana                                                #
-# -------------------------------------------------------------------- #
-  prometheus:
-    image: prom/prometheus:latest 
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-    networks: [mlops]
+    # -------------------------------------------------------------------- #
+    #  Prometheus & Grafana                                                #
+    # -------------------------------------------------------------------- #
+    prometheus:
+        image: prom/prometheus:latest
+        volumes:
+            - ./prometheus.yml:/etc/prometheus/prometheus.yml
+        ports:
+            - "9090:9090"
+        command:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+        networks: [mlops]
 
-  grafana:
-    image: grafana/grafana:latest
-    volumes:
-      - ./grafana_data/dashboards:/var/lib/grafana/dashboards
-      - ./grafana_data/provisioning/dashboards:/etc/grafana/provisioning/dashboards
-    environment:
-      GF_SECURITY_ADMIN_USER:     admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
-    restart: unless-stopped
-    depends_on: [prometheus]
-    ports:
-      - "3000:3000"
-    networks: [mlops]
+    grafana:
+        image: grafana/grafana:latest
+        volumes:
+            - ./grafana_data/dashboards:/var/lib/grafana/dashboards
+            - ./grafana_data/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+        environment:
+            GF_SECURITY_ADMIN_USER: admin
+            GF_SECURITY_ADMIN_PASSWORD: admin
+        restart: unless-stopped
+        depends_on: [prometheus]
+        ports:
+            - "3000:3000"
+        networks: [mlops]
 
-# -------------------------------------------------------------------- #
-#  Weights & Biases                                                    #
-# -------------------------------------------------------------------- #
-  wandb:
-    image: wandb/local:latest
-    container_name: wandb-local
-    restart: unless-stopped
-    environment:
-      WANDB_LICENSE: "${WANDB_LICENSE}"     
-      WANDB_REQUIRE_LICENSE: "true"
-    volumes:
-      - /mnt/block/wandb_data:/volumes      
-    ports:
-      - "8080:8080"      # HTTP & REST
-      - "8081:8081"      # gRPC
-    networks: [mlops]
+    # -------------------------------------------------------------------- #
+    #  Weights & Biases                                                    #
+    # -------------------------------------------------------------------- #
+    wandb:
+        image: wandb/local:latest
+        container_name: wandb-local
+        restart: unless-stopped
+        environment:
+            WANDB_LICENSE: ${WANDB_LICENSE}
+            WANDB_REQUIRE_LICENSE: "true"
+        volumes:
+            - /mnt/block/wandb_data:/volumes
+        ports:
+            - "8080:8080" # HTTP & REST
+            - "8081:8081" # gRPC
+        networks: [mlops]
 
-# -------------------------------------------------------------------- #
-#  Locust - Load Test                                                  #
-# -------------------------------------------------------------------- #
-  locust:
-    image: locustio/locust:2.23
-    command: >
-      -f /test/locustfile.py
-      --host http://${FIP_INFER}:8080
-      --headless -u 3 -r 1 --run-time 5m
-      --csv /test/report --exit-code-on-error 1
-    volumes:
-      - /mnt/block/on_tests:/test
-    ports:
-      - "8089:8089"
-    networks: [mlops]
+    # -------------------------------------------------------------------- #
+    #  Locust - Load Test                                                  #
+    # -------------------------------------------------------------------- #
+    locust:
+        image: locustio/locust:latest
+        command: >
+            -f /test/locustfile.py
+            --host http://${FIP_INFER}:8080
+            --headless -u 3 -r 1 --run-time 5m
+            --csv /test/report --exit-code-on-error 1
+        volumes:
+            - /mnt/block/on_tests:/test
+        ports:
+            - "8089:8089"
+        networks: [mlops]
 
-# -------------------------------------------------------------------- #
-#  Frontend                                                            #
-# -------------------------------------------------------------------- #
-  frontend:
+    # -------------------------------------------------------------------- #
+    #  Frontend                                                            #
+    # -------------------------------------------------------------------- #
+    frontend:
         build:
-            context: .
-            dockerfile: dockerfile.frontend
+            context: ./frontend
+            dockerfile: Dockerfile.frontend
         ports:
             - "8000:8000"
         environment:
-            - API_URL=http://localhost:8080/predict
-            - FEEDBACK_ENDPOINT=http://localhost:8080/feedback
+            - API_URL=http://{FIP_INFER}:8080/predict
             - TIMEOUT_MS=5000
             - PORT=8000
         restart: unless-stopped
 
 networks:
-  mlops:
-    driver: bridge
+    mlops:
+        driver: bridge

@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.1.2-cuda12.6-cudnn8-runtime
+FROM pytorch/pytorch:2.6.0-cuda12.6-cudnn9-runtime
 
 RUN apt-get update && apt-get install -y git
 
@@ -7,11 +7,10 @@ WORKDIR /app
 COPY . .
 
 RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+RUN pip install -r requirements_train.txt
 
-ENV WANDB_MODE=offline
 
 EXPOSE 8000
 
-CMD ["gunicorn", "-w", "1", "--threads", "4", "-b", "0.0.0.0:8000", "train_app:app"]
+CMD ["python", "app.py"] 
 

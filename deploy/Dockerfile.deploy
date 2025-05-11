@@ -8,7 +8,7 @@ ENV PIP_NO_CACHE_DIR=1 \
 WORKDIR /app
 
 # 3. Copy Env 
-COPY requirements.txt .
+COPY requirements_deploy.txt .
 
 # 4. Install system rely
 RUN apt-get update -y && \
@@ -19,20 +19,12 @@ RUN apt-get update -y && \
 
 # 5. Python rely
 RUN python -m pip install --upgrade pip && \
-    pip install -r requirements.txt
+    pip install -r requirements_deploy.txt
 
 # 6. Copy source codes
 COPY . .
 
 # 7. install perf_analyzer（≈30 MB）
-RUN set -eux; \
-    apt-get update && \
-    apt-get install -y --no-install-recommends wget ca-certificates && \
-    wget -qO- https://github.com/triton-inference-server/server/releases/download/v2.46.0/perf_analyzer-linux-x86_64.tar.gz \
-      | tar -xz -C /usr/local/bin && \
-    chmod +x /usr/local/bin/perf_analyzer && \
-    apt-get purge -y --auto-remove wget && \
-    rm -rf /var/lib/apt/lists/*
 
 # 8. Port expose
 EXPOSE 8000
@@ -42,4 +34,4 @@ EXPOSE 8000
 # USER svc
 
 # 10. Docker launch
-CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["python", "-m", "uvicorn", "app:app",     "--host", "0.0.0.0",     "--port", "8000",     "--workers", "1",                "--loop", "uvloop",     "--http", "h11",     "--limit-concurrency", "2048",      "--timeout-keep-alive", "30"]

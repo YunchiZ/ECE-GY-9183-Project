@@ -29,6 +29,7 @@ from minio import Minio
 
 
 app = Flask(__name__)
+
 thread_lock = threading.Lock()
 status_lock = threading.Lock()
 metric_lock = threading.Lock()
@@ -53,7 +54,7 @@ def get_update_agent() -> UpdateAgent:
 # A global variable JSON file for a host. If LOCK=True, it means CI/CD process is in progress and has been locked
 # To avoid frequent triggering of CI/CD processes
 deploy_data_dir = "/app/deploy_data"
-
+monitor_data_dir = "/app/monitor_data"
 
 deploy_database = os.path.join(deploy_data_dir, "serving_data.db")
 candidate_database = os.path.join(deploy_data_dir, "candidate_data.db")
@@ -115,7 +116,7 @@ data_shift_metrics = {"word_counts": [], "label_counts": []}
 # ================================================ Section Divider
 
 
-def write_to_minio(file_path, object_name=None, bucket_name="etl_data"):
+def write_to_minio(file_path, object_name=None, bucket_name="etl-data"):
     """
     :param file_path: local file path
     :param bucket_name: minio bucket name
@@ -152,28 +153,28 @@ def write_to_minio(file_path, object_name=None, bucket_name="etl_data"):
         return False
 
 
-def read_from_minio(object_name, file_path, bucket_name="frontend"):
-    """
-    :param object_name: object name on minio
-    :param file_path: local file path
-    :param bucket_name: minio bucket name"""
+# def read_from_minio(object_name, file_path, bucket_name="frontend"):
+#     """
+#     :param object_name: object name on minio
+#     :param file_path: local file path
+#     :param bucket_name: minio bucket name"""
 
-    access_key = os.getenv("minio-access-key")
-    secret_key = os.getenv("minio-secret-key")
-    secure = os.getenv("minio-secure", "false").lower() == "true"
-    try:
-        client = Minio(
-            endpoint=minio_endpoint,
-            access_key=access_key,
-            secret_key=secret_key,
-            secure=secure,
-        )
-        client.fget_object(bucket_name, object_name, file_path)
-        logging.info(f"'{object_name}' downloaded to '{file_path}'")
-        return os.path.abspath(file_path)
-    except Exception as e:
-        logging.error(f"Error downloading '{object_name}': {e}")
-        return False
+#     access_key = os.getenv("minio-access-key")
+#     secret_key = os.getenv("minio-secret-key")
+#     secure = os.getenv("minio-secure", "false").lower() == "true"
+#     try:
+#         client = Minio(
+#             endpoint=minio_endpoint,
+#             access_key=access_key,
+#             secret_key=secret_key,
+#             secure=secure,
+#         )
+#         client.fget_object(bucket_name, object_name, file_path)
+#         logging.info(f"'{object_name}' downloaded to '{file_path}'")
+#         return os.path.abspath(file_path)
+#     except Exception as e:
+#         logging.error(f"Error downloading '{object_name}': {e}")
+#         return False
 
 
 def notify(docker, index, notification_type):
@@ -195,6 +196,22 @@ def notify(docker, index, notification_type):
         return 500
 
 
+def is_datashift():
+    """
+    Check if data shift occurs
+    :return: bool
+    """
+    global data_shift_metrics
+
+    labels = data_shift_metrics["label_counts"]
+
+    labels_min, labels_max = min(labels), max(labels)
+    if labels_max - labels_min > 0.1 * labels_min:
+        return True
+    else:
+        return False
+
+
 # ================================================ All database-related functions
 # Actually, the frontend container will put labels into different task name databases according to the label ID, so the Monitor container doesn't need to match them
 # These functions must ensure:
@@ -212,7 +229,9 @@ def notify(docker, index, notification_type):
 # label schema:
 # id INTEGER PRIMARY KEY
 # input TEXT
-# label TEXT/INTEGER
+# label_label1 TEXT
+# label_label2 INTEGER
+# label_label3 INTEGER
 
 
 def database_merge(type: str):
@@ -224,23 +243,14 @@ def database_merge(type: str):
     # $ Determine database access path based on deploy_data_dir and serving[index]
     # $ Determine user behavior label library/file access path based on label_dir and ?
 
-    # with open(LOCK_file_db, "r") as f:
-    #     lock_data = json.load(f)
-    #     lock = lock_data.get("LOCK", False)
-    # while lock:
-    #     with open(LOCK_file_db, "r") as f:
-    #         lock_data = json.load(f)
-    #         lock = lock_data.get("LOCK", False)
-    #         time.sleep(1)
-
-    new_db_path = os.path.join(deploy_data_dir, "evaluation.db")
+    new_db_path = os.path.join(monitor_data_dir, "evaluation.db")
 
     if type == "candidate":
         merge_database = os.path.join(candidate_database, "candidate_data.db")
     elif type == "serving":
         merge_database = os.path.join(deploy_database, "serving_data.db")
 
-    label_database = read_from_minio("label.db", "label.db", "frontend")
+    label_database = os.path.join(deploy_data_dir, "label.db")
 
     deploy_conn = sqlite3.connect(merge_database)
     deploy_cur = deploy_conn.cursor()
@@ -291,17 +301,17 @@ def database_merge(type: str):
     )
 
     base_query = """
-    SELECT 
-        p.id,
-        p.text AS predictions_input,
-        p.pred AS predictions_pred,
-        l.text AS label_input,
-        l.pred1 AS label_label1,
-        l.pred2 AS label_label2,
-        l.pred3 AS label_label3
-    FROM 
+    SELECT
+    p.id,
+    p.text AS predictions_input,
+    p.pred AS predictions_pred,
+    l.text AS label_input,
+    l.Label1 AS label_label1,
+    l.Label2 AS label_label2,
+    l.Label3 AS label_label3
+    FROM
         predictions p
-    JOIN 
+    JOIN
         label_db.label l ON p.id = l.id
     """
 
@@ -311,18 +321,21 @@ def database_merge(type: str):
     INSERT INTO task1_data (
         id, predictions_input, predictions_pred, label_input, label_label1
     ) VALUES (?, ?, ?, ?, ?)
+    WHERE label_label1 IS NOT NULL
     """
 
     task2_insert = """
     INSERT INTO task2_data (
         id, predictions_input, predictions_pred, label_input, label_label2
     ) VALUES (?, ?, ?, ?, ?)
+    WHERE label_label2 IS NOT NULL
     """
 
     task3_insert = """
     INSERT INTO task3_data (
         id , predictions_input, predictions_pred, label_input, label_label3
     ) VALUES (?, ?, ?, ?, ?)
+    WHERE label_label3 IS NOT NULL
     """
 
     task1_data = [(row[0], row[1], row[2], row[3], row[4]) for row in results]
@@ -351,7 +364,7 @@ def database_merge(type: str):
 
 def metric_analysis(database: str, itype: int, e_analysis: bool = False):
     """return: metric, error_status"""
-
+    metric = 0
     conn = sqlite3.connect(database)
     cur = conn.cursor()
 
@@ -372,7 +385,7 @@ def metric_analysis(database: str, itype: int, e_analysis: bool = False):
             rouge_scores = []
 
             # Calculate ROUGE score for each sample
-            for id, pred, label in results:
+            for id_, pred, label in results:
                 if (
                     pred and label
                 ):  # Ensure that both prediction and label are not empty
@@ -402,7 +415,7 @@ def metric_analysis(database: str, itype: int, e_analysis: bool = False):
             y_pred = []
             y_true = []
 
-            for id, pred, label in results:
+            for id_, pred, label in results:
                 # Ensure that prediction value and label are integers
                 try:
                     pred_val = int(pred)
@@ -428,7 +441,7 @@ def metric_analysis(database: str, itype: int, e_analysis: bool = False):
             y_pred = []
             y_true = []
 
-            for id, pred, label in results:
+            for id_, pred, label in results:
                 # Ensure that prediction value and label are integers
                 try:
                     pred_val = int(pred)
@@ -482,7 +495,7 @@ def metric_analysis(database: str, itype: int, e_analysis: bool = False):
     finally:
         cur.close()
         conn.close()
-    return metric, error_status
+        return metric, error_status
 
 
 def datashift_analysis(database):
@@ -584,7 +597,7 @@ def init():
     "/monitor", methods=["POST"]
 )  # The most complex part of model monitoring, the core mechanism
 def monitor():
-    global serving, candidate, stage, sample_num, s_metrics, c_metrics, error_, data_shift_metrics
+    global serving, candidate, stage, sample_num, s_metrics, c_metrics, data_shift_metrics
     data = request.get_json(force=True)
     index = data.get("index")
     status = data.get("status")
@@ -633,9 +646,9 @@ def monitor():
 
                 # $ Access global metric variables about data distribution data_distribution
                 # $ Perform similar operations: analyze the average of previous metrics, then add data variable to become part of the record
-            data_shift = (
-                False  # This is for code completeness, temporarily written this way
-            )
+            data_shift = is_datashift()
+
+            # This is for code completeness, temporarily written this way
             # 5) Then enter critical condition judgment: whether frontend statistical error rate exceeds threshold / whether data drift occurs / whether performance decays
             # Actually, for the efficiency of this part of the process, critical condition judgment has priority, but since all need to be reported to prometheus, all three need to be judged
             # If the critical condition is triggered, trigger ETL according to LOCK.json and alert prometheus

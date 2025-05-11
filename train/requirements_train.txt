@@ -54,9 +54,6 @@ httpx==0.27.2
 huggingface-hub==0.30.2
 idna==3.7
 iniconfig==2.1.0
-ipykernel==6.29.5
-ipython==8.29.0
-ipywidgets==8.1.5
 isoduration==20.11.0
 jedi==0.19.2
 Jinja2==3.1.4
@@ -66,17 +63,6 @@ jsonpatch==1.33
 jsonpointer==2.1
 jsonschema==4.23.0
 jsonschema-specifications==2024.10.1
-jupyter_client==8.6.3
-jupyter_core==5.7.2
-jupyter-events==0.10.0
-jupyter-lsp==2.2.5
-jupyter_server==2.14.2
-jupyter_server_terminals==0.5.3
-jupyterlab==4.3.1
-jupyterlab-language-pack-zh-CN==4.2.post3
-jupyterlab_pygments==0.3.0
-jupyterlab_server==2.27.3
-jupyterlab_widgets==3.0.13
 kiwisolver==1.4.7
 Markdown==3.7
 markdown-it-py==3.0.0

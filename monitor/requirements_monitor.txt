@@ -5,3 +5,4 @@ rouge-score
 scikit-learn
 prometheus-client
 minio
+gunicorn
