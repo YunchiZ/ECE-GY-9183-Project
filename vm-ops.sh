@@ -43,6 +43,4 @@ docker run hello-world
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl gnupg
 
-docker compose -f vm-ops.yaml up -d
-
 source .env
