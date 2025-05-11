@@ -3,7 +3,7 @@
 USER_ID="YOUR_USER_ID"  
 APP_CRED_ID="82d88fb62a0546c890bd0db8c6a157b8"
 APP_CRED_SECRET="wuytMbYGQNZ6nu_ToRnpC1n3QWi5DWpu1_fCMQ0zKXK4mrZwWqWrUcxpJb5pgqhyRgOfAe6ENnoS_GhjA8Fp9g"
-RCLONE_CONTAINER="object-persist-project28"   
+RCLONE_CONTAINER="object-persist-project28-train"   
 MOUNT_PATH="/mnt/object"
 
 if ! command -v rclone &> /dev/null; then
