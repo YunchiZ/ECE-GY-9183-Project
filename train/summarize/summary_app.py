@@ -301,9 +301,9 @@ def summary_run(WANDB_KEY):
 
     tokenize_fn = partial(preprocess_function, tokenizer=tokenizer)
     
-    train_raw = dataset["train"].select(range(100))
-    eval_raw = dataset["validation"].select(range(20))
-    test_raw = dataset["test"].select(range(20))
+    # train_raw = dataset["train"].select(range(100))
+    eval_raw = dataset["validation"].select(range(200))
+    test_raw = dataset["test"].select(range(200))
     train_subset = train_raw.map(tokenize_fn, batched=True)
     eval_subset = eval_raw.map(tokenize_fn, batched=True)
     test_dataset = test_raw.map(tokenize_fn, batched=True)
