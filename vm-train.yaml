@@ -25,7 +25,7 @@ services:
             <<: *minio-env
             DEPLOY_URL: http://${FIP_INFER}:8080
             WANDB_API_KEY: ${WANDB_API_KEY}
-            WANDB_BASE_URL: http://${WANDB_HOST}:8080
+            WANDB_BASE_URL: http://${FIP_OPS}:8080
             WANDB_MODE: "online"
             # WANDB_ENTITY: local
             # WANDB_PROJECT: my_project
