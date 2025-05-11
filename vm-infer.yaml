@@ -12,7 +12,7 @@ services:
         shm_size: "8g"
         command: >
             tritonserver --model-repository=/models
-                         --model-control-mode=explicit
+                         --model-control-mode=poll
                          --strict-model-config=true
         ports: ["8002:8002"]
         volumes:
