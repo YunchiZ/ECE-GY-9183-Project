@@ -46,4 +46,4 @@ scrape_configs:
 EOF
 
 echo FIP_TRAIN,FIP_INFER
-echo "Created Prometheus Confif yaml: ./prometheus_data/prometheus.yml"
+echo "Created Prometheus Config yaml: ./prometheus_data/prometheus.yml"

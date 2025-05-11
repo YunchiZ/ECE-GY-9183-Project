@@ -1,10 +1,8 @@
-# git clone https://github.com/YunchiZ/ECE-GY-9183-Project.git
-# cd ECE-GY-9183-Project
-chmod +x mount_block_store.sh
-./mount_block_store.sh
-
 #!/bin/bash
 set -e  # exit when mistake
+
+chmod +x mount_block_store.sh
+./mount_block_store.sh
 
 # a. install drive
 sudo apt-get update   # renew apt-get
@@ -43,7 +41,19 @@ docker run hello-world
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl gnupg
 
-source .env
+echo "===== Environment setup ====="
+if [ -f .env ]; then
+    source .env
+    echo "Environment file loaded"
+else
+    echo "Warning: .env file not found"
+fi
 
-chmod +x generate_prometheus_config.sh
-./generate_prometheus_config.sh
+echo "=====  Prometheus config generation ====="
+if [ -f generate_prometheus_config.sh ]; then
+    chmod +x generate_prometheus_config.sh
+    ./generate_prometheus_config.sh
+    echo "Prometheus configuration generated"
+else
+    echo "Warning: generate_prometheus_config.sh not found"
+fi
