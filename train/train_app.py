@@ -10,6 +10,7 @@ import subprocess
 from fakenews_app import *
 from classification_app import *
 from summary_app import *
+import boto3
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
