@@ -5,8 +5,10 @@ set -e
 DEVICE="/dev/vdb1"
 MOUNT_POINT="/mnt/block"
 
-if [ ! -e "$DEVICE" ]; then
-  echo "[ERROR] $DEVICE does not exist. Is the block volume attached and partitioned?"
+if sudo blkid "$DEVICE" &> /dev/null; then
+  echo "[INFO] $DEVICE already has a filesystem."
+else
+  echo "[WARNING] $DEVICE has no filesystem — will not mount!"
   exit 1
 fi
 
