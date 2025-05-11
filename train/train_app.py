@@ -113,5 +113,5 @@ def upload_to_s3(local_path, bucket_name, s3_key):
     except Exception as e:
         logging.error(f"Failed to upload to S3: {e}")
 
-# if __name__ == "__main__":
-#     app.run(host="0.0.0.0", port=8000)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000, threaded = True)
