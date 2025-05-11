@@ -325,10 +325,10 @@ The pipeline integrates persistent storage, structured logging (via SQLite), bat
 #### 1). Persistent Storage
 
    
-   We mount persistent volumes on Chameleon to store long-lived information. The data volume layout is shown as follows:
+   We use two object storage to store the original model file on Chameleon to store long-lived information, the first one called object-persist-project28-train is used to storage the datasheet and weight  The layout is shown as follows:
       
    ```
-   /mnt/monitor-data/ # General data storage (utilized by ETL and online service modules)
+   /mnt/object/monitor-data/ # General data storage (utilized by ETL and train container)
    ├── original/         # Raw Kaggle data
    │   └── dataset.csv
    |
