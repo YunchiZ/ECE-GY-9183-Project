@@ -1,6 +1,3 @@
-git clone https://github.com/YunchiZ/ECE-GY-9183-Project.git
-cd ECE-GY-9183-Project
-
 chmod +x mount_object_store_train.sh
 ./mount_object_store_train.sh
 
