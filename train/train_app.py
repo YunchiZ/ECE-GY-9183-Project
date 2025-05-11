@@ -23,7 +23,7 @@ train_data_dir = '/app/models'
 
 base_url = os.environ.get("DEPLOY_ENDPOINT", "http://deploy:8000")
 DEPLOY_ENDPOINT = base_url.rstrip('/') + "/notify"
-WANDB_KEY = os.environ.get("WANDB_LICENSE")
+WANDB_KEY = os.environ.get("WANDB_KEY")
 
 TRAINING_SCRIPTS = {
     1: "classification_app",
