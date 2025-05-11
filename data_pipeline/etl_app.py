@@ -91,23 +91,34 @@ def check_and_clean_data(data, table_name):
 
 
 def save_to_volume(data, table_name):
-    """Save processed data to shared volume for rclone service to upload to object storage"""
+    """Append processed data to shared volume CSV for rclone to upload"""
     try:
-        # Build save path
+        # build save path
         save_dir = f"/app/etl_data/{table_name}"
         os.makedirs(save_dir, exist_ok=True)
-        
-        # Use fixed filename
-        file_path = os.path.join(save_dir, "evaluation.csv")
-        
-        # Save as CSV
-        data.to_csv(file_path, index=False, encoding='utf-8')
-        
-        logging.info(f"Data saved to {file_path}, waiting for rclone to upload to object storage")
+
+        # fixed filename
+        if table_name == "task1_data":  
+            file_path = os.path.join(save_dir, "summary_train.csv")
+        elif table_name == "task2_data":
+            file_path = os.path.join(save_dir, "welfake_train.csv")
+        elif table_name == "task3_data":
+            file_path = os.path.join(save_dir, "classification_train.csv")
+
+        # check if file exists
+        write_header = not os.path.exists(file_path)
+
+        if write_header:
+            logging.info(f"{file_path} not found, creating new CSV file")
+
+        # save as CSV (append mode)
+        data.to_csv(file_path, mode='a', header=write_header, index=False, encoding='utf-8')
+
+        logging.info(f"Appended data to {file_path}")
         return True
-    
+
     except Exception as e:
-        logging.error(f"Error saving to volume: {str(e)}")
+        logging.error(f"Error appending to volume: {str(e)}")
         return False
 
 def read_from_minio():
@@ -131,7 +142,7 @@ def read_from_minio():
             return None
 
         logging.info(f"Found '{object_name}' in bucket '{MINIO_BUCKET}', starting download...")
-        
+
         # Download file from MinIO
         s3_client.download_file(MINIO_BUCKET, object_name, temp_db)
         
@@ -164,7 +175,7 @@ def read_from_minio():
 def read_from_minio():
     """Read SQLite data from MinIO with bucket and file existence check"""
     object_name = "evaluation.db"
-    temp_db = "/tmp/evaluation_temp.db"
+    temp_db = "/app/evaluation_temp.db"
 
     try:
         # check if MinIO bucket exists
