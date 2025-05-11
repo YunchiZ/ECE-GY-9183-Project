@@ -22,16 +22,13 @@ services:
     # -------------------------------------------------------------------- #
     prometheus:
         image: prom/prometheus:latest
-        environment:
-            - FIP_TRAIN=${FIP_TRAIN:-localhost}
-            - FIP_INFER=${FIP_INFER:-localhost}
         volumes:
-            - ./prometheus-entrypoint.sh:/prometheus-entrypoint.sh
+            - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
         ports:
             - "9090:9090"
         command:
             - "--config.file=/etc/prometheus/prometheus.yml"
-        entrypoint: ["/prometheus-entrypoint.sh"]
         networks: [mlops]
 
     grafana:

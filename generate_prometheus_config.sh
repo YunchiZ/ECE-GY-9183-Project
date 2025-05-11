@@ -1,12 +1,14 @@
-#!/bin/sh
-set -e
+#!/bin/bash
 
 # 设置默认值，如果环境变量未设置
 FIP_TRAIN=${FIP_TRAIN:-localhost}
 FIP_INFER=${FIP_INFER:-localhost}
 
+# 确保输出目录存在
+mkdir -p ./prometheus_data
+
 # 生成prometheus.yml配置文件
-cat > /etc/prometheus/prometheus.yml << EOF
+cat > ./prometheus_data/prometheus.yml << EOF
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -43,5 +45,4 @@ scrape_configs:
         - targets: ["${FIP_INFER}:8030"]
 EOF
 
-# 执行原始的Prometheus命令
-exec /bin/prometheus "$@"
+echo "已生成Prometheus配置文件: ./prometheus_data/prometheus.yml"
