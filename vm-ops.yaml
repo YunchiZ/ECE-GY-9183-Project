@@ -87,7 +87,7 @@ services:
         ports:
             - "8000:8000"
         environment:
-            - API_URL=http://{FIP_INFER}:8080/predict
+            - API_URL=http://${FIP_INFER}:8080/predict
             - TIMEOUT_MS=5000
             - PORT=8000
         restart: unless-stopped
