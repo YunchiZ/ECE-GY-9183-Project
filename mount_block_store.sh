@@ -3,15 +3,21 @@
 set -e
 
 DEVICE="/dev/vdb1"
-MOUNT_DIR="/mnt/block"
+MOUNT_POINT="/mnt/block"
 
-echo "[INFO] Creating mount directory at $MOUNT_DIR..."
-sudo mkdir -p $MOUNT_DIR
+if [ ! -e "$DEVICE" ]; then
+  echo "[ERROR] $DEVICE does not exist. Is the block volume attached and partitioned?"
+  exit 1
+fi
 
-echo "[INFO] Mounting $DEVICE to $MOUNT_DIR..."
-sudo mount $DEVICE $MOUNT_DIR
+echo "[INFO] Creating mount point: $MOUNT_POINT"
+sudo mkdir -p $MOUNT_POINT
 
-echo "[INFO] Changing ownership to user 'cc'..."
-sudo chown -R cc:cc $MOUNT_DIR
+echo "[INFO] Mounting $DEVICE to $MOUNT_POINT"
+sudo mount $DEVICE $MOUNT_POINT
 
-echo "[SUCCESS] Block storage mounted to $MOUNT_DIR"
+echo "[INFO] Changing ownership to user 'cc'"
+sudo chown -R cc $MOUNT_POINT
+sudo chgrp -R cc $MOUNT_POINT
+
+echo "[SUCCESS] Block volume mounted at $MOUNT_POINT"
