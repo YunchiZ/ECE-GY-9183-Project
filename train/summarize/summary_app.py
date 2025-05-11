@@ -309,7 +309,7 @@ def summary_run(WANDB_KEY):
     test_dataset = test_raw.map(tokenize_fn, batched=True)
     
     search_space = {
-        "learning_rate": tune.grid_search([1e-5, 2e-5]),
+        "learning_rate": tune.grid_search([1e-5]),
     }
     
     model_id = get_next_model_version()
