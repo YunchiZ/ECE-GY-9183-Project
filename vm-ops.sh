@@ -1,5 +1,3 @@
-git clone https://github.com/YunchiZ/ECE-GY-9183-Project.git
-cd ECE-GY-9183-Project
 chmod +x mount_block_store.sh
 ./mount_block_store.sh
 
