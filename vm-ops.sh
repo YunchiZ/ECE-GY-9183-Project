@@ -46,3 +46,4 @@ sudo apt-get install -y ca-certificates curl gnupg
 source .env
 
 chmod +x generate_prometheus_config.sh
+./generate_prometheus_config.sh

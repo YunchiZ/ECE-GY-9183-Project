@@ -5,10 +5,10 @@ FIP_TRAIN=${FIP_TRAIN:-localhost}
 FIP_INFER=${FIP_INFER:-localhost}
 
 # 确保输出目录存在
-mkdir -p ./prometheus_data
+
 
 # 生成prometheus.yml配置文件
-cat > ./prometheus_data/prometheus.yml << EOF
+cat > ./prometheus.yml << EOF
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -45,4 +45,5 @@ scrape_configs:
         - targets: ["${FIP_INFER}:8030"]
 EOF
 
-echo "已生成Prometheus配置文件: ./prometheus_data/prometheus.yml"
+echo FIP_TRAIN,FIP_INFER
+echo "Created Prometheus Confif yaml: ./prometheus_data/prometheus.yml"
