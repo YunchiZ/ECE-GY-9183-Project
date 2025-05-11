@@ -174,7 +174,7 @@ def get_next_model_version(save_path = "models/bart_pytorch/", model_prefix="BAR
 
 def evaluate_offline():
     retcode = pytest.main([
-        "models/off_tests/bart_test",
+        "tests",
         "--disable-warnings",
         "-v",
         "-s"

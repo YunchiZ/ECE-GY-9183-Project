@@ -7,9 +7,9 @@ import sqlite3
 from flask import Flask, request, jsonify
 import logging
 import subprocess
-from fakenews_app import *
-from classification_app import *
-from summary_app import *
+from fake.fakenews_app import *
+from classification.classification_app import *
+from summarize.summary_app import *
 import boto3
 
 # Configure logging

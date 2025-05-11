@@ -245,7 +245,7 @@ def export_with_transformers_api(model, tokenizer, output_file):
 
 def evaluate_offline():
     retcode = pytest.main([
-        "models/off_tests/xln_test",
+        "tests",
         "--disable-warnings",
         "-v",
         "-s"

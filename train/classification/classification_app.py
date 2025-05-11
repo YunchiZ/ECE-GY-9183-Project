@@ -134,7 +134,7 @@ def get_next_model_version(save_path = "models/bert_pytorch/", model_prefix="BER
 
 def evaluate_offline():
     retcode = pytest.main([
-        "models/tests/bert_test",
+        "tests",
         "--disable-warnings",
         "-v",
         "-s"
