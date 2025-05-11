@@ -238,7 +238,7 @@ def classification_run(WANDB_KEY):
     )
     # train_dir = Path(__file__).resolve().parent.parent
     # data = pd.read_csv("./dataset/NewsCategorizer.csv")
-    data = pd.read_csv("./etl_data/task3_data/classification_train.csv")
+    data = pd.read_csv("../etl_data/task3_data/classification_train.csv")
     train_texts, test_texts, train_labels, test_labels = train_test_split(data['short_description'], data['category'], test_size=0.2, shuffle=True)
     train_texts, eval_texts, train_labels, eval_labels = train_test_split(data['short_description'], data['category'], test_size=0.2, shuffle=True)
     with open("label_encoder.pkl", "rb") as f:
@@ -248,8 +248,8 @@ def classification_run(WANDB_KEY):
     test_labels_encoded = label_encoder.transform(test_labels)
     eval_labels_encoded = label_encoder.transform(eval_labels)
     
-    tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased', cache_dir='./models/bert_source')
-    model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased', num_labels=len(data['category'].unique()), cache_dir='./models/bert_source')
+    tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased', cache_dir='../models/bert_source')
+    model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased', num_labels=len(data['category'].unique()), cache_dir='../models/bert_source')
     train_encodings = tokenizer(train_texts.tolist(), truncation=True, padding=True)
     test_encodings = tokenizer(test_texts.tolist(), truncation=True, padding=True)
     eval_encodings = tokenizer(test_texts.tolist(), truncation=True, padding=True)
@@ -260,7 +260,7 @@ def classification_run(WANDB_KEY):
     train_dataset = NewsDataset(train_encodings, train_labels_tensor)
     test_dataset = NewsDataset(test_encodings, test_labels_tensor)
     eval_dataset = NewsDataset(eval_encodings, eval_labels_tensor)
-    
+
     search_space = {
         "learning_rate": tune.grid_search([1e-5]),
     }

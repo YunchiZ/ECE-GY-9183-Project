@@ -279,12 +279,12 @@ def summary_run(WANDB_KEY):
             
 
     # dataset = load_dataset('abisee/cnn_dailymail', '3.0.0', cache_dir="./etl_data/task1/evaluation.csv")
-    dataset = pd.read_csv("./etl_data/task1_data/summary_train.csv") # 
+    dataset = pd.read_csv("../etl_data/task1_data/summary_train.csv")
     # dataset = pd.read_csv("./etl_data/task1/evaluation.csv") 
     model_name = "facebook/bart-base"
-    tokenizer = BartTokenizer.from_pretrained(model_name, cache_dir="./models/bart_source")
+    tokenizer = BartTokenizer.from_pretrained(model_name, cache_dir="../models/bart_source")
     
-    model = BartForConditionalGeneration.from_pretrained(model_name, cache_dir="./models/bart_source")
+    model = BartForConditionalGeneration.from_pretrained(model_name, cache_dir="../models/bart_source")
     for param in model.model.encoder.parameters():
         param.requires_grad = False
     for param in model.model.decoder.parameters():

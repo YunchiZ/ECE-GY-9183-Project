@@ -259,14 +259,14 @@ def fakenews_run(WANDB_KEY):
         host = os.environ["WANDB_HOST"],
     )
     
-    df = pd.read_csv("./etl_data/task2_data/welfake_train.csv")
+    df = pd.read_csv("../etl_data/task2_data/welfake_train.csv")
     
     df = df.dropna()
     df['text'] = df['title'] + " " + df['text']
     train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)
     train_df, eval_df = train_test_split(train_df, test_size=0.2, random_state=42)
 
-    tokenizer = XLNetTokenizer.from_pretrained('xlnet-base-cased', cache_dir='./models/xln_source')
+    tokenizer = XLNetTokenizer.from_pretrained('xlnet-base-cased', cache_dir='../models/xln_source')
     train_dataset = Dataset.from_pandas(train_df[['text', 'label']])
     eval_dataset = Dataset.from_pandas(eval_df[['text', 'label']])
     test_dataset = Dataset.from_pandas(test_df[['text', 'label']])
@@ -280,7 +280,7 @@ def fakenews_run(WANDB_KEY):
         'xlnet/xlnet-base-cased',
         num_labels=2,
         problem_type="single_label_classification",
-        cache_dir='./models/xln_source'
+        cache_dir='../models/xln_source'
     )
     search_space = {
         "learning_rate": tune.grid_search([1e-5]),
