@@ -67,17 +67,33 @@ _result0_buffer, _result1_buffer, _result2_buffer = [], [], []
 
 
 # ---------------- Initialization ----------------
-def init():  # All initialization content
+async def init():
     """
-    Initialize global variable `serving` for the API
-    & establish corresponding database
+    Initialize global variables and databases, and load necessary models.
     """
-    # Initialize all databases and tables at once
+    # Step 1: Initialize databases
     try:
-        init_db()
-        logging.info(f"Database initialized for databases successfully.")
+        init_db()  # Assuming init_db() is a synchronous function
+        logging.info("Database initialized successfully.")
     except Exception as e:
-        logging.error(f"Error occurred in initializing databases: {e}")
+        logging.error(f"Error initializing the database: {e}")
+        return  # If database initialization fails, stop further initialization
+
+    # Step 2: Load models asynchronously
+    models_to_load = [
+        {"model_name": "BART", "version": 1},
+        {"model_name": "XLN", "version": 1},
+        {"model_name": "BERT", "version": 1},
+    ]
+
+    for model in models_to_load:
+        try:
+            await triton_config(
+                model_name=model["model_name"], version=model["version"], action="load"
+            )
+            logging.info(f"Model {model['model_name']} loaded successfully.")
+        except Exception as e:
+            logging.error(f"Error loading model {model['model_name']}: {e}")
 
 
 @asynccontextmanager
@@ -86,11 +102,21 @@ async def lifespan(_: FastAPI):
     MAIN_LOOP = asyncio.get_running_loop()
     logging.info(f"MAIN_LOOP initialized: {MAIN_LOOP}")
     global_status_visual(stage, serving_name, candidate_name)
-    init()  # Called before the application starts
+
+    # 调用 init() 初始化
+    try:
+        logging.info("Starting application initialization...")
+        await init()  # 确保在异步上下文中调用
+        logging.info("Initialization completed successfully.")
+    except Exception as e:
+        logging.error(f"Error during application initialization: {e}")
+        raise  # 让 FastAPI 知道初始化失败
+
     try:
         yield  # Application runtime
     finally:
-        pass  # Optional cleanup: close DB connections, flush logs, etc.
+        logging.info("Application shutdown. Cleaning up resources...")
+        # 在这里进行清理操作，比如关闭数据库连接、清理缓存等
 
 
 app = FastAPI(title="deploy-gateway", version="1.0", lifespan=lifespan)
