@@ -2,6 +2,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import os
 import socket
 import sys
+import logging
 
 
 class EnvVariableHandler(BaseHTTPRequestHandler):
@@ -18,6 +19,8 @@ class EnvVariableHandler(BaseHTTPRequestHandler):
 
                 # Get environment variables with default values
                 API_URL = os.getenv("API_URL", "http://localhost:8080/predict")
+                logging.info(f"API_URL: {API_URL}")
+
                 feedback_endpoint = os.getenv(
                     "FEEDBACK_ENDPOINT", "http://localhost:8080/feedback"
                 )
@@ -81,14 +84,6 @@ def run_server(port=8000):
     local_ip = get_local_ip()
 
     # Print current environment variable settings
-    print(f"\nCurrent environment variable settings:")
-    print(
-        f"API_ENDPOINT = {os.getenv('API_ENDPOINT', 'http://localhost:8080/predict')} (default: http://localhost:8080/predict)"
-    )
-    print(
-        f"FEEDBACK_ENDPOINT = {os.getenv('FEEDBACK_ENDPOINT', 'http://localhost:8080/feedback')} (default: http://localhost:8080/feedback)"
-    )
-    print(f"TIMEOUT_MS = {os.getenv('TIMEOUT_MS', '5000')} (default: 5000)")
 
     print(f"\nServer started:")
     print(f"- Local access: http://localhost:{port}")
@@ -106,6 +101,10 @@ def run_server(port=8000):
 if __name__ == "__main__":
     # Use port from command line argument if provided
     port = 8000
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
     if len(sys.argv) > 1:
         try:
             port = int(sys.argv[1])
