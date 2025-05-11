@@ -12,8 +12,8 @@ services:
         shm_size: "8g"
         command: >
             tritonserver --model-repository=/models
-                         --model-control-mode=poll
-                         --strict-model-config=true
+                         --model-control-mode=explicit
+                         --disable-auto-complete-config=True
 
         ports: ["8002:8002"]
         volumes:
@@ -31,6 +31,7 @@ services:
             <<: *minio-env
         volumes:
             - /mnt/object/models:/app/models
+            - /mnt/object/tokenizer:/app/tokenizer
             - ./deploy_data:/app/deploy_data
         ports: ["8080:8000"]
         depends_on: [triton]

@@ -45,9 +45,9 @@ def data_filter(text: str) -> str:
 # Tokenization
 
 TOKENS = {
-    "BART": AutoTokenizer.from_pretrained("facebook/bart-base", cache_dir="./app/models/bart_source"),
-    "XLN" : AutoTokenizer.from_pretrained("xlnet-base-cased", cache_dir="./app/models/xln_source"),
-    "BERT": AutoTokenizer.from_pretrained("distilbert-base-uncased", cache_dir="./app/models/bert_source")
+    "BART": AutoTokenizer.from_pretrained("facebook/bart-base", cache_dir="/app/tokenizer/bart_source"),
+    "XLN" : AutoTokenizer.from_pretrained("xlnet-base-cased", cache_dir="/app/tokenizer/xln_source"),
+    "BERT": AutoTokenizer.from_pretrained("distilbert-base-uncased", cache_dir="/app/tokenizer/bert_source")
 }
 
 MAXLEN = {
