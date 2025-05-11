@@ -9,7 +9,7 @@ COPY . .
 RUN pip install --upgrade pip
 RUN pip install -r requirements_train.txt
 
-ENV WANDB_MODE=offline
+ENV WANDB_MODE=online
 
 EXPOSE 8000
 
