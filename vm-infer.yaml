@@ -12,8 +12,8 @@ services:
         shm_size: "8g"
         command: >
             tritonserver --model-repository=/models
-                         --model-control-mode=explicit
-                         --disable-auto-complete-config
+                         --model-control-mode=poll
+                        #  --disable-auto-complete-config
 
         ports: ["8002:8002"]
         volumes:

@@ -31,7 +31,7 @@ sudo mkdir -p $MOUNT_PATH
 sudo chown -R $USER:$USER $MOUNT_PATH
 
 echo "[INFO] Mounting object storage to $MOUNT_PATH ..."
-rclone mount chi_tacc:$RCLONE_CONTAINER $MOUNT_PATH --allow-other --daemon
+rclone mount chi_tacc:$RCLONE_CONTAINER $MOUNT_PATH --allow-other --daemon --allow-root
 
 sleep 2
 if mount | grep -q "$MOUNT_PATH"; then

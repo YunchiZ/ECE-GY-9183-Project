@@ -86,14 +86,14 @@ async def init():
         {"model_name": "BERT", "version": 1},
     ]
 
-    for model in models_to_load:
-        try:
-            await triton_config(
-                model_name=model["model_name"], version=model["version"], action="load"
-            )
-            logging.info(f"Model {model['model_name']} loaded successfully.")
-        except Exception as e:
-            logging.error(f"Error loading model {model['model_name']}: {e}")
+    # for model in models_to_load:
+    #     try:
+    #         await triton_config(
+    #             model_name=model["model_name"], version=model["version"], action="load"
+    #         )
+    #         logging.info(f"Model {model['model_name']} loaded successfully.")
+    #     except Exception as e:
+    #         logging.error(f"Error loading model {model['model_name']}: {e}")
 
 
 @asynccontextmanager
