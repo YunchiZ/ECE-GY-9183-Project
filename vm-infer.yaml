@@ -30,7 +30,7 @@ services:
             <<: *minio-env
         volumes:
             - /mnt/object/models:/app/models
-            - /mnt/object/deploy_data:/app/deploy_data
+            - ./deploy_data:/app/deploy_data
         ports: ["8080:8000"]
         depends_on: [triton]
         # cpus: "8"
@@ -46,8 +46,8 @@ services:
             <<: *minio-env
             ETL_URL: http://${FIP_TRAIN}:8010
         volumes:
-            - /mnt/object/deploy_data:/app/deploy_data
-            - /mnt/object/monitor_data:/app/monitor_data
+            - ./deploy_data:/app/deploy_data
+            - ./monitor_data:/app/monitor_data
         ports: ["8030:8000"]
         depends_on: [deploy]
         # cpus: "8"
