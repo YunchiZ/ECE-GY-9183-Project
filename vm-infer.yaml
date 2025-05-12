@@ -9,7 +9,7 @@ services:
     triton:
         image: nvcr.io/nvidia/tritonserver:23.09-py3
         runtime: nvidia
-        shm_size: "16g"  # 增加共享内存大小
+        shm_size: "16g"  
         command: >
         tritonserver --model-repository=/models
                     --model-control-mode=poll
@@ -24,7 +24,7 @@ services:
         ports: ["8000:8000", "8002:8002"]
         volumes:
         - /mnt/object/models:/models
-        deploy:  # 添加资源限制
+        deploy:  
         resources:
             limits:
             memory: 32G  
