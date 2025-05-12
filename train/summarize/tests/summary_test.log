@@ -1,0 +1,5 @@
+2025-05-12 10:50:56,901 - INFO - platform linux -- Python 3.12.1, pytest-7.4.2, pluggy-1.3.0
+2025-05-12 11:01:23,015 - INFO - Loading model from tmp/latest_model
+2025-05-12 11:01:25,621 - INFO - Loading test dataset from tmp/test_dataset.pt
+2025-05-12 11:01:27,812 - INFO - Evaluated ROUGE-L: 0.1901
+E           AssertionError: Model ROUGE-L score 0.1901 is below threshold 0.3
