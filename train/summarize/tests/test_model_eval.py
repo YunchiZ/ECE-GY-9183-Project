@@ -5,7 +5,7 @@ from transformers import BartForConditionalGeneration, BartTokenizer
 import torch
 
 def test_rouge_score_above_threshold(test_dataset, latest_model_path):
-    threshold = 0.1
+    threshold = 0.2
 
     model = BartForConditionalGeneration.from_pretrained(latest_model_path)
     tokenizer = BartTokenizer.from_pretrained("facebook/bart-base", cache_dir='./model')
