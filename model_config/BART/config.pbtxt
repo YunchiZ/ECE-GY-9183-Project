@@ -1,6 +1,6 @@
 name: "BART"
 backend: "onnxruntime"
-max_batch_size: 0
+max_batch_size: 4
 input [
   { name: "input_ids"         data_type: TYPE_INT64 dims: [ -1, -1 ] },
   { name: "attention_mask"    data_type: TYPE_INT64 dims: [ -1, -1 ] },
