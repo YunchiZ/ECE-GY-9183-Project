@@ -21,7 +21,6 @@ services:
                     --model-load-thread-count=4  
                     --exit-on-error=false  
                     --repository-poll-secs=60  
-
         ports: ["8000:8000", "8002:8002"]
         volumes:
         - /mnt/object/models:/models
