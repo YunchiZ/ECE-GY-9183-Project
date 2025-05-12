@@ -13,32 +13,35 @@ DEFAULT_MODEL_TIMEOUT   = 120     # Maximum wait time for `wait_until_ready`
 
 
 def _mk_timeout(read: float) -> httpx.Timeout:
-    return httpx.Timeout(connect=1.0, read=read, write=5.0, pool=5.0)
-
-
+    return httpx.Timeout(
+        connect=3.0,
+        read=read,
+        write=5.0,
+        pool=5.0
+    )
+RETRY_TRANSPORT = httpx.AsyncHTTPTransport(retries=2)
+SHARED_CLIENT   = httpx.AsyncClient(timeout=_mk_timeout(10.0),
+                                    transport=RETRY_TRANSPORT)
 async def triton_infer(model: str,
                        version: int,
                        payload: Dict[str, Any],
-                       timeout: float = DEFAULT_INFER_TIMEOUT) -> Optional[dict]:
-    """
-    Send an inference request; returns Triton JSON on success, None on failure.
-    """
+                       timeout: float = 10.0) -> Optional[dict]:
     url = INFER_URL_TMPL.format(model=model, ver=version)
     try:
-        async with httpx.AsyncClient(timeout=_mk_timeout(timeout)) as client:
-            r = await client.post(url, json=payload)
-            r.raise_for_status()
-            return r.json()
+        r = await SHARED_CLIENT.post(url, json=payload)
+        r.raise_for_status()
+        return r.json()
 
     except httpx.ReadTimeout:
         logging.warning("[Triton] %s:%s infer read-timeout %.1fs", model, version, timeout)
     except httpx.HTTPStatusError as e:
-        logging.error("[Triton] %s:%s HTTP %s – %s",
-                      model, version, e.response.status_code, e.response.text[:200])
+        if e.response.status_code == 409:
+            logging.info("[Triton] %s:%s already processed (409)", model, version)
+        else:
+            logging.error("[Triton] %s:%s HTTP %s – %s",
+                          model, version, e.response.status_code, e.response.text[:200])
     except httpx.RequestError as e:
         logging.error("[Triton] %s:%s request error: %s", model, version, e)
-    except Exception as e:
-        logging.exception("[Triton] %s:%s unexpected error: %s", model, version, e)
     return None
 
 
