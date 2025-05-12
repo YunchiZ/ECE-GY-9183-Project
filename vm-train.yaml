@@ -9,7 +9,7 @@ services:
     etl:
         build:
             context: ./etl
-            dockerfile: Dockerfile.etl
+            dockerfile: dockerfile.etl
         environment: *minio-env
         volumes:
             - /mnt/object/etl_data:/app/etl_data
