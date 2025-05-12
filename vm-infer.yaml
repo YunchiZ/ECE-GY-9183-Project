@@ -9,22 +9,38 @@ services:
     triton:
         image: nvcr.io/nvidia/tritonserver:23.09-py3
         runtime: nvidia
-        shm_size: "8g"
+        shm_size: "16g"  # 增加共享内存大小
         command: >
-            tritonserver --model-repository=/models
-                        --model-control-mode=poll
-                        --http-port=8000
-                        --allow-http=true
-                        --log-verbose=1
+        tritonserver --model-repository=/models
+                    --model-control-mode=poll
+                    --http-port=8000
+                    --allow-http=true
+                    --log-verbose=1  
+                    --log-error=true
+                    --strict-model-config=false  
+                    --model-load-thread-count=4  
+                    --exit-on-error=false  
+                    --repository-poll-secs=60  
 
-        # ports: ["8002:8002"]
         ports: ["8000:8000", "8002:8002"]
         volumes:
-            - /mnt/object/models:/models
-        # cpus: "32"
-        # cpu_shares: 2048
+        - /mnt/object/models:/models
+        deploy:  # 添加资源限制
+        resources:
+            limits:
+            memory: 32G  
+        healthcheck:  
+        test: ["CMD", "curl", "-f", "http://localhost:8000/v2/health/ready"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+        start_period: 40s  
         networks: [mlops]
-        restart: on-failure
+        restart: unless-stopped  
+        logging:  
+        options:
+            max-size: "10m"
+            max-file: "3"
 
     deploy:
         build:
