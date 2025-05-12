@@ -25,7 +25,7 @@ SHARED_CLIENT   = httpx.AsyncClient(timeout=_mk_timeout(10.0),
 async def triton_infer(model: str,
                        version: int,
                        payload: Dict[str, Any],
-                       timeout: float = 10.0) -> Optional[dict]:
+                       timeout: float = 30.0) -> Optional[dict]:
     url = INFER_URL_TMPL.format(model=model, ver=version)
     try:
         r = await SHARED_CLIENT.post(url, json=payload)

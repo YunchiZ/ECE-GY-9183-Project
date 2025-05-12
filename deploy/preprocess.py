@@ -112,7 +112,7 @@ def build_payloads(raw_text: str) -> dict:
                     else [{"name": "output"}]
                 )
             }
-        if model=="BERT":
+        elif model=="BERT":
             payloads[model] = {
                 "inputs": [
                     {
