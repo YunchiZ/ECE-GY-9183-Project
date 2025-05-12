@@ -1,0 +1,4 @@
+======================================================= 1 passed, 8 warnings in 99.90s ========================================================
+2025-05-12 11:26:27,238 - INFO - Model successfully exported to: /app/models/XLN/12/XLN-v12.onnx  
+2025-05-12 11:26:27,240 - INFO - New model exported: XLN-v12, path: /app/models/XLN/12/XLN-v12.onnx  
+2025-05-12 11:26:27,240 - INFO - XLN-v12

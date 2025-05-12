@@ -1,0 +1,4 @@
+============================================================ 1 passed, 9 warnings in 25.43s =============================================================
+2025-05-12 10:50:51,591 - INFO - Exporting model to: /app/models/BERT/9/BERT-v9.onnx
+2025-05-12 10:50:56,856 - INFO - Model successfully exported to: /app/models/BERT/9/BERT-v9.onnx
+2025-05-12 10:50:56,870 - INFO - New model exported: BERT-v9, path: /app/models/BERT/9/BERT-v9.onnx
