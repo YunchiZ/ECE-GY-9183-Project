@@ -59,35 +59,108 @@ MAXLEN = {
 
 def build_payloads(raw_text: str) -> dict:
     """
-    Package the raw text into payload dictionaries required for Triton inference for three models.
+    Package the raw text into payload dictionaries required for Triton inference for three models,
+    including token_type_ids for ONNX models that require it.
     """
+    import numpy as np  # 确保导入 numpy
     payloads = {}
     for model in ("BART", "XLN", "BERT"):
-        token = TOKENS[model](raw_text, padding="max_length",
-                              truncation=True, max_length=MAXLEN[model],
-                              return_tensors="np")
+        token = TOKENS[model](
+            raw_text,
+            padding="max_length",
+            truncation=True,
+            max_length=MAXLEN[model],
+            return_tensors="np"
+        )
 
-        input_ids, attention_mask = token["input_ids"], token["attention_mask"]
+        input_ids = token["input_ids"]
+        attention_mask = token["attention_mask"]
 
-        payloads[model] = {
-            "inputs": [
-                {
-                    "name": "input_ids",
-                    "shape": list(input_ids.shape),  # [1, L]
-                    "datatype": "INT64",
-                    "data": input_ids.flatten().tolist()
-                },
-                {
-                    "name": "attention_mask",
-                    "shape": list(attention_mask.shape),
-                    "datatype": "INT64",
-                    "data": attention_mask.flatten().tolist()
-                }
-            ],
-            "outputs": (
-                [{"name": "logits"}] if model == "BART"
-                else [{"name": "output"}]
-            )
-        }
+        # 检查 token_type_ids 是否在输出中，否则补一个全 0 的
+        if "token_type_ids" in token:
+            token_type_ids = token["token_type_ids"]
+        else:
+            token_type_ids = np.zeros_like(input_ids, dtype=np.int64)
+        if "decoder_input_ids" in token:
+            decoder_input_ids = token["decoder_input_ids"]
+        else:
+            decoder_input_ids = np.zeros_like(input_ids, dtype=np.int64)
+        if model=="XLN":
+            payloads[model] = {
+                "inputs": [
+                    {
+                        "name": "input_ids",
+                        "shape": list(input_ids.shape),  # [1, L]
+                        "datatype": "INT64",
+                        "data": input_ids.flatten().tolist()
+                    },
+                    {
+                        "name": "attention_mask",
+                        "shape": list(attention_mask.shape),
+                        "datatype": "INT64",
+                        "data": attention_mask.flatten().tolist()
+                    },
+                    {
+                        "name": "token_type_ids",
+                        "shape": list(token_type_ids.shape),
+                        "datatype": "INT64",
+                        "data": token_type_ids.flatten().tolist()
+                    }
+                ],
+                "outputs": (
+                    [{"name": "logits"}] if model == "BART"
+                    else [{"name": "output"}]
+                )
+            }
+        if model=="BERT":
+            payloads[model] = {
+                "inputs": [
+                    {
+                        "name": "input_ids",
+                        "shape": list(input_ids.shape),  # [1, L]
+                        "datatype": "INT64",
+                        "data": input_ids.flatten().tolist()
+                    },
+                    {
+                        "name": "attention_mask",
+                        "shape": list(attention_mask.shape),
+                        "datatype": "INT64",
+                        "data": attention_mask.flatten().tolist()
+                    },
+                ],
+                "outputs": (
+                    [{"name": "logits"}] if model == "BART"
+                    else [{"name": "output"}]
+                )
+            }
+        else:
+            payloads[model] = {
+                "inputs": [
+                    {
+                        "name": "input_ids",
+                        "shape": list(input_ids.shape),  # [1, L]
+                        "datatype": "INT64",
+                        "data": input_ids.flatten().tolist()
+                    },
+                    {
+                        "name": "attention_mask",
+                        "shape": list(attention_mask.shape),
+                        "datatype": "INT64",
+                        "data": attention_mask.flatten().tolist()
+                    },
+                    {
+                        "name": "decoder_input_ids",
+                        "shape": list(decoder_input_ids.shape),
+                        "datatype": "INT64",
+                        "data": decoder_input_ids.flatten().tolist()
+                    }
+                ],
+                "outputs": (
+                    [{"name": "logits"}] if model == "BART"
+                    else [{"name": "output"}]
+                )
+            }
+
+
 
     return payloads
