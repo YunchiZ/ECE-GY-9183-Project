@@ -84,7 +84,7 @@ The sample input and output is shown as follows:
 #### Data Pipeline
 
 Raw data is downloaded from Kaggle & Hugging face and stored in object storage (object-persist-project28-train and object-persist-project28-eval) for training and online evaluation, while the datasheet for load testing is stored in block sotrage.
-The model is split into training & test and evaluation data using the fixed random seed. 
+The model is split into training & test and evaluation data using the fixed random seed. [Raw Data](https://github.com/YunchiZ/ECE-GY-9183-Project/tree/Data-pipeline/raw_process)
 
 Pre-processing of the raw datasheet includes merging the title and body text into a single input field, drop the NAN value, cleaning invalid characters and saving the processed data for model consumption. The clean version of processed training data is store in object storage and could be read by train docker at the starting stage. [Online-Data-Pipeline](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/Data-pipeline/data_pipeline/etl_app.py)
 
