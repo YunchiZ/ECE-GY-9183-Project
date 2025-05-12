@@ -3,29 +3,26 @@ from typing import Any, Dict, Optional, Union
 from func import split_model_tag
 
 # Triton Address
-TRITON_HOST     = "http://triton:8000"
-INFER_URL_TMPL  = TRITON_HOST + "/v2/models/{model}/versions/{ver}/infer"
-REPO_URL_TMPL   = TRITON_HOST + "/v2/repository/models/{model}/{action}"
-READY_URL_TMPL  = TRITON_HOST + "/v2/models/{model}{ver_part}/ready"
+TRITON_HOST = "http://triton:8000"
+INFER_URL_TMPL = TRITON_HOST + "/v2/models/{model}/versions/{ver}/infer"
+REPO_URL_TMPL = TRITON_HOST + "/v2/repository/models/{model}/{action}"
+READY_URL_TMPL = TRITON_HOST + "/v2/models/{model}{ver_part}/ready"
 
-DEFAULT_INFER_TIMEOUT   = 1.5     # Maximum wait time for a single inference
-DEFAULT_MODEL_TIMEOUT   = 120     # Maximum wait time for `wait_until_ready`
+DEFAULT_INFER_TIMEOUT = 1.5  # Maximum wait time for a single inference
+DEFAULT_MODEL_TIMEOUT = 120  # Maximum wait time for `wait_until_ready`
 
 
 def _mk_timeout(read: float) -> httpx.Timeout:
-    return httpx.Timeout(
-        connect=3.0,
-        read=read,
-        write=5.0,
-        pool=5.0
-    )
+    return httpx.Timeout(connect=3.0, read=read, write=5.0, pool=5.0)
+
+
 RETRY_TRANSPORT = httpx.AsyncHTTPTransport(retries=2)
-SHARED_CLIENT   = httpx.AsyncClient(timeout=_mk_timeout(10.0),
-                                    transport=RETRY_TRANSPORT)
-async def triton_infer(model: str,
-                       version: int,
-                       payload: Dict[str, Any],
-                       timeout: float = 120.0) -> Optional[dict]:
+SHARED_CLIENT = httpx.AsyncClient(timeout=_mk_timeout(60.0), transport=RETRY_TRANSPORT)
+
+
+async def triton_infer(
+    model: str, version: int, payload: Dict[str, Any], timeout: float = 120.0
+) -> Optional[dict]:
     url = INFER_URL_TMPL.format(model=model, ver=version)
     try:
         r = await SHARED_CLIENT.post(url, json=payload)
@@ -33,13 +30,20 @@ async def triton_infer(model: str,
         return r.json()
 
     except httpx.ReadTimeout:
-        logging.warning("[Triton] %s:%s infer read-timeout %.1fs", model, version, timeout)
+        logging.warning(
+            "[Triton] %s:%s infer read-timeout %.1fs", model, version, timeout
+        )
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 409:
             logging.info("[Triton] %s:%s already processed (409)", model, version)
         else:
-            logging.error("[Triton] %s:%s HTTP %s – %s",
-                          model, version, e.response.status_code, e.response.text[:200])
+            logging.error(
+                "[Triton] %s:%s HTTP %s – %s",
+                model,
+                version,
+                e.response.status_code,
+                e.response.text[:200],
+            )
     except httpx.RequestError as e:
         logging.error("[Triton] %s:%s request error: %s", model, version, e)
     return None
@@ -47,7 +51,7 @@ async def triton_infer(model: str,
 
 # Simple validation of information passed during API calls: 1000 words * 12 characters/word = max 12000 characters
 # Standard Triton response format:
-'''
+"""
 {
   "model_name": "bert_v1",
   "outputs": [
@@ -59,14 +63,18 @@ async def triton_infer(model: str,
     }
   ]
 }
-'''
+"""
 
 VersionT = Union[str, int]
-async def triton_config(model_name: str,
-                        version: Optional[VersionT] = None,
-                        action: str = "load",
-                        wait_until_ready: bool = True,
-                        timeout: int = DEFAULT_MODEL_TIMEOUT) -> None:
+
+
+async def triton_config(
+    model_name: str,
+    version: Optional[VersionT] = None,
+    action: str = "load",
+    wait_until_ready: bool = True,
+    timeout: int = DEFAULT_MODEL_TIMEOUT,
+) -> None:
     """
     action = "load" / "unload"
     Wait for the model to be READY for up to *timeout* seconds.
@@ -84,14 +92,15 @@ async def triton_config(model_name: str,
     if ver_str is not None:
         body["parameters"] = {"version": ver_str}
 
-    timeout_obj = _mk_timeout(read=10.0)
+    timeout_obj = _mk_timeout(read=60.0)
     async with httpx.AsyncClient(timeout=timeout_obj) as client:
         # ① Send load/unload command
         url = REPO_URL_TMPL.format(model=model_name, action=action)
         r = await client.post(url, json=body)
         r.raise_for_status()
-        logging.info("[Triton] %s %s:%s accepted",
-                     action, model_name, ver_str or "<policy>")
+        logging.info(
+            "[Triton] %s %s:%s accepted", action, model_name, ver_str or "<policy>"
+        )
 
         # ② For unload or if there's no need to wait for ready
         if action == "unload" or not wait_until_ready:
@@ -105,8 +114,9 @@ async def triton_config(model_name: str,
         while True:
             rr = await client.get(ready_url)
             if rr.status_code == 200:
-                logging.info("[Triton] model %s:%s READY",
-                             model_name, ver_str or "<policy>")
+                logging.info(
+                    "[Triton] model %s:%s READY", model_name, ver_str or "<policy>"
+                )
                 return
             if asyncio.get_event_loop().time() > deadline:
                 raise RuntimeError(
@@ -121,13 +131,15 @@ def _parse_p95(stdout: str) -> float:
     Extract P95 latency (in ms) from perf_analyzer stdout.
     """
     m = re.search(r"95th percentile latency.*?:\s+(\d+)", stdout)
-    return int(m.group(1)) / 1e6 if m else 1e9   # ns→ms
+    return int(m.group(1)) / 1e6 if m else 1e9  # ns→ms
 
 
-def load_test(model_tag: str,
-              batch_sizes=(1, 4, 8),
-              concurrencies=(1, 4, 8),
-              p95_budget_ms: int = 500) -> bool:
+def load_test(
+    model_tag: str,
+    batch_sizes=(1, 4, 8),
+    concurrencies=(1, 4, 8),
+    p95_budget_ms: int = 500,
+) -> bool:
     """True = Pass; False = Fail"""
     if shutil.which("perf_analyzer") is None:
         logging.error("perf_analyzer not found in PATH")
@@ -138,18 +150,29 @@ def load_test(model_tag: str,
         for c in concurrencies:
             cmd = [
                 "perf_analyzer",
-                "-m", name,
-                "-v", ver,
-                "-b", str(b),
-                "--concurrency-range", str(c),
-                "--measurement-interval", "3000"
+                "-m",
+                name,
+                "-v",
+                ver,
+                "-b",
+                str(b),
+                "--concurrency-range",
+                str(c),
+                "--measurement-interval",
+                "3000",
             ]
             res = subprocess.run(cmd, capture_output=True, text=True)
             p95 = _parse_p95(res.stdout)
 
             if p95 > p95_budget_ms:
-                logging.info("FAIL %s batch=%s concur=%s p95=%.1f ms (budget %d)",
-                             model_tag, b, c, p95, p95_budget_ms)
+                logging.info(
+                    "FAIL %s batch=%s concur=%s p95=%.1f ms (budget %d)",
+                    model_tag,
+                    b,
+                    c,
+                    p95,
+                    p95_budget_ms,
+                )
                 return False
 
     logging.info("PASS %s passed load test", model_tag)
