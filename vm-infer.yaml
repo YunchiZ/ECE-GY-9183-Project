@@ -26,9 +26,9 @@ services:
         volumes:
             - /mnt/object/models:/models
         deploy:
-        resources:
-            limits:
-            memory: 32G
+            resources:
+                limits:
+                    memory: 32G
         healthcheck:
             test: ["CMD", "curl", "-f", "http://localhost:8000/v2/health/ready"]
             interval: 30s
