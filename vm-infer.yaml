@@ -18,7 +18,7 @@ services:
                     --log-verbose=1  
                     --log-error=true
                     --strict-model-config=false  
-                    --disable-auto-complete-config=false
+                    --disable-auto-complete-config
                     --model-load-thread-count=4  
                     --exit-on-error=false  
                     --repository-poll-secs=60
