@@ -85,8 +85,8 @@ def build_payloads(raw_text: str) -> dict:
                 }
             ],
             "outputs": (
-                [{"name": "output_ids"}] if model == "BART"
-                else [{"name": "logits"}]
+                [{"name": "logits"}] if model == "BART"
+                else [{"name": "output"}]
             )
         }
 
