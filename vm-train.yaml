@@ -20,7 +20,7 @@ services:
     train:
         build:
             context: ./train
-            dockerfile: Dockerfile.train
+            dockerfile: dockerfile.train
         environment:
             <<: *minio-env
             DEPLOY_URL: http://${FIP_INFER}:8080
