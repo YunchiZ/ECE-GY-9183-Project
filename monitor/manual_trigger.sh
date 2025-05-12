@@ -11,7 +11,7 @@ fi
 echo "Retrieved FIP_TRAIN value: $FIP_TRAIN_VALUE"
 
 # Construct the URL
-URL="http://${FIP_TRAIN_VALUE}:8000/trigger"  # Adjust the port and endpoint as needed
+URL="http://${FIP_TRAIN_VALUE}:8010/trigger"  # Adjust the port and endpoint as needed
 
 # Make the curl request
 echo "Making request to: $URL"
