@@ -14,17 +14,13 @@ services:
             tritonserver --model-repository=/models
                          --model-control-mode=poll
 
-        ports: ["8002:8002"]
+        # ports: ["8002:8002"]
+        ports: ["8000:8000", "8002:8002"]
         volumes:
             - /mnt/object/models:/models
         # cpus: "32"
         # cpu_shares: 2048
         networks: [mlops]
-        healthcheck:
-            test: ["CMD", "curl", "-f", "http://localhost:8000/v2/health/ready"]
-            interval: 5s
-            timeout: 3s
-            retries: 25
         restart: on-failure
 
     deploy:
@@ -38,9 +34,8 @@ services:
             - /mnt/object/tokenizer:/app/tokenizer
             - ./deploy_data:/app/deploy_data
         ports: ["8080:8000"]
-        depends_on:
-            triton:
-                condition: service_healthy
+        depends_on: [triton]
+
         # cpus: "8"
         # cpu_shares: 512
         restart: always
