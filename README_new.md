@@ -6,7 +6,7 @@ We use two types of storage:
 1. Two object storage space to store the raw datasheets, model weights, tokenizers and offline evaluation code.
 2. One block storage space to store the service that run on VM instance.
 
-**Object Storage 1**: object-persist-project28-train located at CHI@TACC. The total size is 3.60GB. After mount it with VM-training, the folder structure is shown as follows:
+**Object Storage 1**: object-persist-project28-train located at CHI@TACC. VM can bind the bucket by run this script: [script](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/main/mount_object_store_train.sh).The total size is 3.60GB. After mount it with VM-training, the folder structure is shown as follows:
 
    ```
    /mnt/object/                             # General data storage shared by train and ETL container
@@ -26,7 +26,7 @@ We use two types of storage:
    ```
 
 
-**Object Storage 2**:object-persist-project28-infer located at CHI@TACC. The total size is 4.64GB. The bucket is used to store the inference model, tokenizer and data to simulate online user request. After mount it with vm-infer, the folder structure is shown as folllows:
+**Object Storage 2**:object-persist-project28-infer located at CHI@TACC. VM can bind the bucket by run this script: [script](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/main/mount_object_store_eval.sh).The total size is 4.64GB. The bucket is used to store the inference model, tokenizer and data to simulate online user request. After mount it with vm-infer, the folder structure is shown as folllows:
 
    ```
    /mnt/object/                             # General data storage for inference
@@ -86,10 +86,11 @@ The sample input and output is shown as follows:
 Raw data is downloaded from Kaggle & Hugging face and stored in object storage (object-persist-project28-train and object-persist-project28-eval) for training and online evaluation, while the datasheet for load testing is stored in block sotrage.
 The model is split into training & test and evaluation data using the fixed random seed. 
 
-Pre-processing of the raw datasheet includes merging the title and body text into a single input field, drop the NAN value, cleaning invalid characters and saving the processed data for model consumption. The clean version of processed training data is store in object storage and could be read by train docker at the starting stage. 
+Pre-processing of the raw datasheet includes merging the title and body text into a single input field, drop the NAN value, cleaning invalid characters and saving the processed data for model consumption. The clean version of processed training data is store in object storage and could be read by train docker at the starting stage. [Online-Data-Pipeline](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/Data-pipeline/data_pipeline/etl_app.py)
 
-The online evaluation data is read from MinIO by monitor container's auto trigger or manager's trigger manually. Then the container would download evaluation.db file. Next is the preprocess of data including dropout NAN and duplicate values. Finally, the data would be append to the existing .csv file and trigger the train container to retrain the model.
+The online evaluation data is read from MinIO by monitor container's auto trigger or manager's trigger manually[Trigger](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/f49a7bfce85137d94fd3fd56e0fe6fc2301ddf98/data_pipeline/etl_app.py#L223). Then the container would download evaluation.db file. Next is the preprocess of data including dropout NAN and duplicate values. Finally, the data would be append to the existing .csv file and trigger the train container to retrain the model.
 
 #### Data Dashboard
 
-The dashboard is integrated with Prometheus and monitors data quality metrics in real time. It tracks missing values using the data_quality_missing_values gauge, which records the number of NaN entries based on task and field. Duplicate entries are captured by the data_quality_duplicates gauge, while any data processing failures are counted using the data_quality_processing_errors counter, categorized by error type. These metrics help ensure the reliability and integrity of the dataset during pipeline execution.
+The dashboard is integrated with Prometheus and monitors data quality metrics in real time. It tracks missing values using the data_quality_missing_values gauge, which records the number of NaN entries based on task and field. Duplicate entries are captured by the data_quality_duplicates gauge, while any data processing failures are counted using the data_quality_processing_errors counter, categorized by error type [metrics defination](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/f49a7bfce85137d94fd3fd56e0fe6fc2301ddf98/data_pipeline/etl_app.py#L28C1-L30C127).
+These metrics help ensure the reliability and integrity of the dataset during pipeline execution.
