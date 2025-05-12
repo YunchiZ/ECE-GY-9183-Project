@@ -26,7 +26,7 @@ We use two types of storage:
    ```
 
 
-**Object Storage 2**:object-persist-project28-infer located at CHI@TACC. VM can bind the bucket by run this script: [script](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/main/mount_object_store_eval.sh).The total size is 4.64GB. The bucket is used to store the inference model, tokenizer and data to simulate online user request. After mount it with vm-infer, the folder structure is shown as folllows:
+**Object Storage 2**:object-persist-project28-infer located at CHI@TACC. VM can bind the bucket by run this script: [script](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/main/mount_object_store_infer.sh).The total size is 4.85GB. The bucket is used to store the inference model, tokenizer and data to simulate online user request. After mount it with vm-infer, the folder structure is shown as folllows:
 
    ```
    /mnt/object/                             # General data storage for inference
@@ -48,7 +48,7 @@ We use two types of storage:
 
    ```
 
-We use one block storage to store the monitor data volumes for Minio, wandb and load testing results. The total size is expanded when running the system. After mount it with vm-ops, the folder structure is shown as follows:
+**Block Storage**: We use one block storage to store the monitor data volumes for Minio, wandb and load testing results.VM can bind this volume by running this script:[script](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/main/mount_block_store.sh).The total size is expanded when running the system. After mount it with vm-ops, the folder structure is shown as follows:
 
    ```
    /mnt/block/                             # General data storage 
