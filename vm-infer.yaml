@@ -41,7 +41,7 @@ services:
     deploy:
         build:
             context: ./deploy
-            dockerfile: Dockerfile.deploy
+            dockerfile: dockerfile.deploy
         environment:
             <<: *minio-env
         volumes:
@@ -59,7 +59,7 @@ services:
     monitor:
         build:
             context: ./monitor
-            dockerfile: Dockerfile.monitor
+            dockerfile: dockerfile.monitor
         environment:
             <<: *minio-env
             ETL_URL: http://${FIP_TRAIN}:8010
