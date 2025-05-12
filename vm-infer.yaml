@@ -9,7 +9,7 @@ services:
     triton:
         image: nvcr.io/nvidia/tritonserver:23.09-py3
         runtime: nvidia
-        shm_size: "16g"
+        shm_size: "64g"
         command: >
             tritonserver --model-repository=/models
                     --model-control-mode=poll
@@ -28,7 +28,7 @@ services:
         deploy:
             resources:
                 limits:
-                    memory: 32G
+                    memory: 64G
         healthcheck:
             test: ["CMD", "curl", "-f", "http://localhost:8000/v2/health/ready"]
             interval: 30s
