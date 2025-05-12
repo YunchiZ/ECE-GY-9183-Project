@@ -9,8 +9,9 @@ COPY . .
 RUN pip install --upgrade pip
 RUN pip install -r requirements_train.txt
 
+ENV WANDB_MODE=online
 
 EXPOSE 8000
 
-CMD ["python", "app.py"] 
+CMD ["python", "app.py"]
 

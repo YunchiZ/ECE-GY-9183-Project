@@ -5,10 +5,11 @@ import numpy as np
 import wandb
 import datasets
 import os
+import re
 import logging
 os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1"
-os.environ["WANDB_MODE"] = "offline"
-os.environ["WANDB_DIR"] = "./wandb_results"
+# os.environ["WANDB_MODE"] = "offline"
+# os.environ["WANDB_DIR"] = "./wandb_summary"
 from ray import tune
 import ray
 from ray.air import session
@@ -26,7 +27,10 @@ from transformers.onnx import export
 from transformers.onnx.features import FeaturesManager
 from functools import partial
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, 
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filename='summary_train.log',
+    filemode='w' )
 logger = logging.getLogger(__name__)
 
 max_input_length = 1024
@@ -42,7 +46,7 @@ def preprocess_function(examples, tokenizer):
     model_inputs["highlights"] = examples["highlights"]
     return model_inputs
 
-def compute_metrics(eval_pred):
+def compute_metrics(eval_pred, tokenizer):
     try:
         rouge = evaluate.load('rouge')
         predictions = eval_pred.predictions
@@ -71,12 +75,17 @@ def compute_metrics(eval_pred):
         rouge_scores["gen_len"] = np.mean([len(pred.split()) for pred in decoded_preds])
         return rouge_scores
     except Exception as e:
-        logger.error(f"metrics error：{e}")
+        logger.error(f"metrics error: {e}")
         return {"rouge1": 0.0, "rouge2": 0.0, "rougeL": 0.0, "gen_len": 0.0}
 
 def train_fn(config, model, train_dataset, eval_dataset, run_name):
+    try:
+        wandb.finish()
+    except:
+        pass
+
     trial_id = session.get_trial_name()
-    wandb.init(
+    run = wandb.init(
         project="Mlops-summary",
         entity="yunchiz-new-york-university",
         name=f"{run_name}_{trial_id}",
@@ -87,11 +96,12 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         trial_dir = session.get_trial_dir()
         output_dir = os.path.join(trial_dir, "results")
     except Exception as e:
-        logger.error(f"路径错误: {str(e)}")
+        logger.error(f"path error: {str(e)}")
         raise
 
     training_args = TrainingArguments(
-        run_name=None,
+        run_name=run.name,
+        report_to="wandb", 
         output_dir=output_dir,
         num_train_epochs=1,
         per_device_train_batch_size=8,
@@ -100,11 +110,11 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         learning_rate=config["learning_rate"],
         weight_decay=0.01,
         logging_dir=os.path.join(trial_dir, "logs"),
-        logging_steps=10000,
+        logging_steps=10,
         eval_strategy="steps",
         eval_steps=50,
         save_strategy="steps",
-        save_steps=50,
+        save_steps=100,
         save_total_limit=1,
         metric_for_best_model="rougeL",
         fp16=True,
@@ -115,7 +125,7 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        compute_metrics=compute_metrics,
+        compute_metrics=compute_metrpartial(compute_metrics, tokenizer=tokenizer),ics,
     )
     try:
         trainer.train()
@@ -146,59 +156,21 @@ def train_fn(config, model, train_dataset, eval_dataset, run_name):
         logger.error(f"Log fail: {str(e)}")
         raise
 
-def get_next_model_version(base_dir="model"):
-    task_id = "0"
-    current_dir = Path(__file__).resolve().parent
-    parent_dir = current_dir.parent
-    status_path = parent_dir / "model/model_status.json"
-    lock_path = status_path.with_suffix(".lock")
-    lock = FileLock(str(lock_path))
-    with lock:
-        if not status_path.exists():
-            return None
-        try:
-            with status_path.open("r") as f:
-                model_status = json.load(f)
-        except json.JSONDecodeError:
-            return None
-        if task_id not in model_status or not model_status[task_id]:
-            return None
-        versions = []
-        for entry in model_status[task_id]:
-            model_name = entry.get("model", "")
-            if model_name.startswith("BART-v"):
-                try:
-                    version_num = int(model_name.replace("BART-v", ""))
-                    versions.append(version_num)
-                except ValueError:
-                    continue
-        return max(versions) if versions else 0
+def get_next_model_version(save_path = "models/bart_pytorch/", model_prefix="BART-v"):
+    if not os.path.exists(save_path):
+        return 1
 
-def update_model_status(new_model_name):
-    task_id = "0"
-    current_dir = Path(__file__).resolve().parent
-    parent_dir = current_dir.parent
-    status_path = parent_dir / "model/model_status.json"
-    lock_path = status_path.with_suffix(".lock")
-    lock = FileLock(str(lock_path))
-    model_status = {}
-    with lock:
-        if status_path.exists():
-            with status_path.open("r") as f:
-                try:
-                    model_status = json.load(f)
-                except json.JSONDecodeError:
-                    model_status = {}
-        else:
-            model_status = {}
-        if task_id not in model_status:
-            model_status[task_id] = []
-        task_models = model_status[task_id]
-        task_models = [m for m in task_models if m["model"] != new_model_name]
-        task_models.append({"model": new_model_name, "status": "candidate"})
-        model_status[task_id] = task_models
-        with status_path.open("w") as f:
-            json.dump(model_status, f, indent=4)
+    version_pattern = re.compile(rf"^{re.escape(model_prefix)}(\d+)$")
+    max_version = 0
+
+    for name in os.listdir(save_path):
+        match = version_pattern.match(name)
+        if match:
+            version_num = int(match.group(1))
+            if version_num > max_version:
+                max_version = version_num
+
+    return max_version + 1
 
 def evaluate_offline():
     retcode = pytest.main([
@@ -296,16 +268,23 @@ def export_with_direct_torch(model, tokenizer, output_file):
         logger.error(f"Direct torch export failed: {e}")
         return None
 
-def summary_run():
-    wandb.login(key="<your_wandb_key>")
-            
-    train_dir = Path(__file__).resolve().parent.parent
-    save_path = train_dir / "model"
-    dataset = load_dataset('abisee/cnn_dailymail', '3.0.0', cache_dir="./dataset")
-    model_name = "facebook/bart-base"
-    tokenizer = BartTokenizer.from_pretrained(model_name, cache_dir="./model")
+def summary_run(WANDB_KEY):
+    # wandb.login(key=WANDB_KEY)
     
-    model = BartForConditionalGeneration.from_pretrained(model_name, cache_dir="./model")
+    wandb.login(
+        key  = WANDB_KEY,
+        host = os.environ["WANDB_HOST"],
+    )
+
+            
+
+    # dataset = load_dataset('abisee/cnn_dailymail', '3.0.0', cache_dir="./etl_data/task1/evaluation.csv")
+    dataset = pd.read_csv("../etl_data/task1_data/summary_train.csv")
+    # dataset = pd.read_csv("./etl_data/task1/evaluation.csv") 
+    model_name = "facebook/bart-base"
+    tokenizer = BartTokenizer.from_pretrained(model_name, cache_dir="../models/bart_source")
+    
+    model = BartForConditionalGeneration.from_pretrained(model_name, cache_dir="../models/bart_source")
     for param in model.model.encoder.parameters():
         param.requires_grad = False
     for param in model.model.decoder.parameters():
@@ -322,29 +301,36 @@ def summary_run():
 
     tokenize_fn = partial(preprocess_function, tokenizer=tokenizer)
     
-    train_raw = dataset["train"].select(range(100))
-    eval_raw = dataset["validation"].select(range(20))
-    test_raw = dataset["test"].select(range(20))
+    # train_raw = dataset["train"].select(range(100))
+    eval_raw = dataset["validation"].select(range(200))
+    test_raw = dataset["test"].select(range(200))
     train_subset = train_raw.map(tokenize_fn, batched=True)
     eval_subset = eval_raw.map(tokenize_fn, batched=True)
     test_dataset = test_raw.map(tokenize_fn, batched=True)
     
     search_space = {
-        "learning_rate": tune.grid_search([1e-5, 2e-5]),
+        "learning_rate": tune.grid_search([1e-5]),
     }
     
-    model_id = get_next_model_version() + 1
-    save_path = train_dir / f"model/BART/{model_id}"
+    model_id = get_next_model_version()
+    save_path = f"models/BART/{model_id}"
     save_path.mkdir(parents=True, exist_ok=True)
     model_name = f"BART-v{model_id}"
-    torch_path = train_dir / f"model/bart_pytorch/{model_name}"
+    torch_path = f"models/bart_pytorch/{model_name}"
+
     run_name = f"{model_name}_{datetime.now().strftime('%m%d_%H%M')}"
-    os.environ["WANDB_PROJECT"] = "Mlops-summary"
-    os.environ["WANDB_DISABLED"] = "false"
+
     current_dir = os.getcwd()
     storage_path = f"file://{current_dir}/ray_results/summary_results"
-    train_fn_with_params = tune.with_parameters(train_fn, model=model, train_dataset=train_subset, eval_dataset=eval_subset, run_name = run_name)
-    ray.init(_temp_dir=f"{train_dir}/ray_tmp", ignore_reinit_error=True)
+
+    train_fn_with_params = tune.with_parameters(train_fn, 
+                                                model=model, 
+                                                train_dataset=train_subset, 
+                                                eval_dataset=eval_subset, 
+                                                run_name = run_name,
+                                                tokenizer=tokenizer)
+
+    ray.init(_temp_dir=f"./ray_tmp", ignore_reinit_error=True)
     analysis = tune.run(
         train_fn_with_params,
         config=search_space,
@@ -354,13 +340,17 @@ def summary_run():
         storage_path=storage_path,
         callbacks=[],
     )
+
     best_trial = analysis.get_best_trial(metric="eval_rougeL", mode="max")
     best_checkpoint = best_trial.checkpoint
     best_checkpoint_dir = best_checkpoint.to_directory()
     best_model = BartForConditionalGeneration.from_pretrained(best_checkpoint_dir)
-    best_model.save_pretrained("tmp/latest_model")
-    torch.save(test_dataset, "tmp/test_dataset.pt")
+    best_model.save_pretrained("/app/models/tmp/latest_model")
+    torch.save(test_dataset, "/app/models/tmp/test_dataset.pt")
     retcode = evaluate_offline()
+
+    onnx_path = "fail"
+
     if retcode != 0:
         logger.warning("test failed")
     else:
