@@ -30,17 +30,13 @@ services:
             limits:
             memory: 32G
         healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:8000/v2/health/ready"]
-        interval: 30s
-        timeout: 10s
-        retries: 3
-        start_period: 40s
+            test: ["CMD", "curl", "-f", "http://localhost:8000/v2/health/ready"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
         networks: [mlops]
         restart: unless-stopped
-        logging:
-        options:
-            max-size: "10m"
-            max-file: "3"
 
     deploy:
         build:
