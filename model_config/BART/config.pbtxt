@@ -1,4 +1,5 @@
 name: "BART"
+platform: "onnxruntime_onnx"
 backend: "onnxruntime"
 max_batch_size: 4
 input [
