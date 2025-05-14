@@ -364,8 +364,9 @@
 			document.addEventListener("click", () => nav.classList.remove("open"));
 
 			/* ---------- API config ---------- */
-			const API_ENDPOINT = "{{API_ENDPOINT}}";
-			const FEEDBACK_ENDPOINT = "{{FEEDBACK_ENDPOINT}}";
+
+			const API_ENDPOINT = "/predict";
+			const FEEDBACK_ENDPOINT = "/feedback";
 			const TIMEOUT_MS = 5000;
 
 			/* ---------- DOM refs ---------- */
@@ -414,9 +415,6 @@
 					idColor: $idOut.style.color,
 				};
 
-				// output to console
-				console.log(prevResults);
-
 				$btn.disabled = true;
 				$load.style.display = "inline-block";
 				$error.textContent = "";
@@ -442,7 +440,6 @@
 					const data = await rsp.json();
 					if (data.prediction_id !== prediction_id) throw new Error("Mismatched prediction_id.");
 
-					// 只有在成功获取新结果后才更新界面
 					$sumOut.textContent = data.bart ?? "N/A";
 					$clsOut.textContent = typeof data.xln === "number" ? CLS_MAP[data.xln] : "N/A";
 					if (data.bert === 1) {
@@ -508,6 +505,8 @@
 					// Success
 					submittedFeedback = true;
 					showFeedbackStatus("Thank you for your feedback!", "green");
+				} catch (err) {
+					showFeedbackStatus("Error submitting feedback: " + err.message, "red");
 				} finally {
 					$feedbackBtn.disabled = false;
 				}
@@ -526,7 +525,8 @@
 					}
 				}, 5000);
 			}
-			console.log("InfoLens initialized");
+
+			console.log("InfoLens initialized with Flask routes");
 		</script>
 	</body>
 </html>
