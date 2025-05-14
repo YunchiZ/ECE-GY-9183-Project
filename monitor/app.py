@@ -112,7 +112,9 @@ s_metrics: List[List[float]] = [
 # Store metrics records for three models. For text summarization tasks, record ROUGE values. For the other two tasks, record ACC values
 c_metrics: List[List[float]] = [[], [], []]
 # About metric initialization??? Unknown for now, need analysis functions from ETL side
-data_shift_metrics = {"word_counts": [], "label_counts": []}
+data_shift_metrics = {"word_counts": [], "label_counts": {}}
+
+error_rates = [0, 0, 0]
 # ================================================ Section Divider
 
 
@@ -782,10 +784,15 @@ def metrics():
     global serving, candidate, s_metrics, c_metrics, data_shift_metrics, error_rates
     agent = get_update_agent()
 
+    logging.info("s_metrics[]: %s", s_metrics)
+    logging.info("c_metrics[]: %s", c_metrics)
     for i in range((len(serving))):
-        agent.update_model_metrics(i, serving[i], s_metrics[-1][i])
+        if len(s_metrics[i]) > 0:
+            agent.update_model_metrics(i, serving[i], s_metrics[i][-1])
+        elif len(s_metrics[i]) == 0:
+            agent.update_model_metrics(i, candidate[i], 0)
         if candidate[i] is not None:
-            agent.update_model_metrics(i, candidate[i], c_metrics[-1][i])
+            agent.update_model_metrics(i, candidate[i], c_metrics[i][-1])
             agent.update_error_rate(candidate[i], "candidate", error_rates[i])
         else:
             agent.update_error_rate(serving[i], "serving", error_rates[i])
@@ -797,4 +804,8 @@ def metrics():
 
 # ---------------- Main ----------------
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
     app.run(host="0.0.0.0", port=8000, threaded=True)

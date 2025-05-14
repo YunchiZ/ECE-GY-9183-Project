@@ -56,7 +56,7 @@ class UpdateAgent:
             self.word_length_counter.observe(count)
         self.logger.info(f"Updated word length metrics with {len(word_counts)} samples")
 
-    def update_label_frequency(self, labels_count):
+    def update_label_frequency(self, labels_count: list):
         """Directly update label_frequency metrics"""
         total = sum(labels_count.values())
         if total == 0:
