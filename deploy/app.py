@@ -687,18 +687,18 @@ async def predict(data: PredictIn):
 
         # --------------------- Parse Output ------------------------------
         if rsp and model == "BART":
-            tokens = np.array(rsp["outputs"][0]["data"])  # 可能 shape 是 [1, T] or [T]
+            tokens = np.array(rsp["outputs"][0]["data"])
 
-            # 统一变成 1D list
             if tokens.ndim == 2 and tokens.shape[0] == 1:
                 token_ids = tokens[0].tolist()
             elif tokens.ndim == 1:
                 token_ids = tokens.tolist()
             else:
-                logging.warning("Unexpected BART output shape: %s", tokens.shape)
+                logging.warning("Unexpected output shape: %s", tokens.shape)
                 token_ids = tokens.flatten().tolist()
 
             pred_text = TOKENS["BART"].decode(token_ids, skip_special_tokens=True)
+
         elif rsp:
             logits = np.array(rsp["outputs"][0]["data"])
             pred_text = int(logits.argmax())
@@ -760,9 +760,19 @@ async def predict_(
 
             if rsp and model == "BART":
                 tokens = np.array(rsp["outputs"][0]["data"])
-                pred = TOKENS["BART"].decode(tokens, skip_special_tokens=True)
+                if tokens.ndim == 2 and tokens.shape[0] == 1:
+                    token_ids = tokens[0].tolist()  # [1, T] -> [T]
+                elif tokens.ndim == 1:
+                    token_ids = tokens.tolist()
+                else:
+                    logging.warning("Unexpected BART output shape: %s", tokens.shape)
+                    token_ids = tokens.flatten().tolist()
+
+                pred = TOKENS["BART"].decode(token_ids, skip_special_tokens=True)
+
             elif rsp:
                 pred = int(np.array(rsp["outputs"][0]["data"]).argmax())
+
             else:
                 pred = None
 
