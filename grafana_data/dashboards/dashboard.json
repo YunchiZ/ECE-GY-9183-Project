@@ -2,28 +2,13 @@
 	"__inputs": [
 		{
 			"name": "DS_PROMETHEUS",
-			"label": "Prometheus",
+			"label": "prometheus",
 			"description": "",
 			"type": "datasource",
 			"pluginId": "prometheus",
 			"pluginName": "Prometheus"
 		}
 	],
-	"templating": {
-		"list": [
-			{
-				"current": {
-					"selected": true,
-					"text": "Prometheus",
-					"value": "Prometheus"
-				},
-				"name": "DS_PROMETHEUS",
-				"options": [],
-				"query": "prometheus",
-				"type": "datasource"
-			}
-		]
-	},
 	"__elements": {},
 	"__requires": [
 		{
@@ -36,7 +21,7 @@
 			"type": "grafana",
 			"id": "grafana",
 			"name": "Grafana",
-			"version": "11.6.0"
+			"version": "12.0.0"
 		},
 		{
 			"type": "panel",
@@ -175,7 +160,7 @@
 				"xTickLabelRotation": 0,
 				"xTickLabelSpacing": 100
 			},
-			"pluginVersion": "11.6.0",
+			"pluginVersion": "12.0.0",
 			"targets": [
 				{
 					"datasource": {
@@ -322,7 +307,7 @@
 				"xTickLabelRotation": 0,
 				"xTickLabelSpacing": 100
 			},
-			"pluginVersion": "11.6.0",
+			"pluginVersion": "12.0.0",
 			"targets": [
 				{
 					"datasource": {
@@ -364,7 +349,7 @@
 				"sortOrder": "Descending",
 				"wrapLogMessage": false
 			},
-			"pluginVersion": "11.6.0",
+			"pluginVersion": "12.0.0",
 			"targets": [
 				{
 					"datasource": {
@@ -484,7 +469,7 @@
 				"showHeader": true,
 				"sortBy": []
 			},
-			"pluginVersion": "11.6.0",
+			"pluginVersion": "12.0.0",
 			"targets": [
 				{
 					"datasource": {
@@ -842,7 +827,7 @@
 					"sort": "none"
 				}
 			},
-			"pluginVersion": "11.6.0",
+			"pluginVersion": "12.0.0",
 			"targets": [
 				{
 					"datasource": {
@@ -945,7 +930,7 @@
 					"sort": "none"
 				}
 			},
-			"pluginVersion": "11.6.0",
+			"pluginVersion": "12.0.0",
 			"targets": [
 				{
 					"datasource": {
@@ -953,7 +938,7 @@
 						"uid": "${DS_PROMETHEUS}"
 					},
 					"editorMode": "code",
-					"expr": "histogram_quantile(0.95, sum(rate(model_response_time_bucket[$__rate_interval])) by (le, model_name))",
+					"expr": "histogram_quantile(0.95, sum(rate(predict_ttlb_seconds_bucket[$__rate_interval])) by (le, model_name))",
 					"interval": "",
 					"legendFormat": "{{endpoint}}",
 					"range": true,
@@ -1045,7 +1030,7 @@
 					"sort": "none"
 				}
 			},
-			"pluginVersion": "11.6.0",
+			"pluginVersion": "12.0.0",
 			"targets": [
 				{
 					"datasource": {
@@ -1145,7 +1130,7 @@
 					"sort": "none"
 				}
 			},
-			"pluginVersion": "11.6.0",
+			"pluginVersion": "12.0.0",
 			"targets": [
 				{
 					"datasource": {
@@ -1153,7 +1138,7 @@
 						"uid": "${DS_PROMETHEUS}"
 					},
 					"editorMode": "code",
-					"expr": "histogram_quantile(0.95, sum(rate(model_inference_time_bucket[$__rate_interval])) by (le, model_name))",
+					"expr": "histogram_quantile(0.95, sum(rate(model_inference_seconds_bucket[$__rate_interval])) by (le, model_name))",
 					"interval": "",
 					"legendFormat": "{{model}}",
 					"range": true,
@@ -1247,7 +1232,7 @@
 					"sort": "none"
 				}
 			},
-			"pluginVersion": "11.6.0",
+			"pluginVersion": "12.0.0",
 			"targets": [
 				{
 					"datasource": {
@@ -1267,15 +1252,26 @@
 	"refresh": "5s",
 	"schemaVersion": 41,
 	"tags": ["model", "performance", "monitoring"],
-
+	"templating": {
+		"list": [
+			{
+				"current": {},
+				"name": "DS_PROMETHEUS",
+				"options": [],
+				"query": "prometheus",
+				"refresh": 1,
+				"type": "datasource"
+			}
+		]
+	},
 	"time": {
-		"from": "now-5m",
+		"from": "now-30m",
 		"to": "now"
 	},
 	"timepicker": {},
 	"timezone": "",
 	"title": "Model Monitoring Dashboard preload",
 	"uid": "model-monitoring-preload",
-	"version": 1,
+	"version": 4,
 	"weekStart": ""
 }
