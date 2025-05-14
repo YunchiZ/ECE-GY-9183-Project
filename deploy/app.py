@@ -780,4 +780,4 @@ def metrics():
     """
     Expose Prometheus metrics for monitoring.
     """
-    return Response(generate_latest(), mimetype="text/plain")
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
