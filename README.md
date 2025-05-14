@@ -172,6 +172,8 @@ The online evaluation data is read from MinIO by monitor container's auto trigge
 
 ### Data Dashboard
 
+![Data Dashboard](data_dashboard.png)
+
 ## VI. MODEL TRAINING
 
 ### 1) BART
@@ -263,8 +265,6 @@ This project use [Ray Tune](./train/summarize/summary_app.py#L334) for hyperpara
 #### LoRA
 
 To reduce training time and memory usage in Summary Task, this project uses [LoRA](./train/summarize/summary_app.py#L334) for fine-tuning the BART model. - Training time decreased from 1.5 hours to 50 mins by testing on 10000 sample data.
-
--\*\*\*\*
 
 ## VII. Model Serving
 
