@@ -12,10 +12,11 @@ import numpy as np
 # 6) Remove empty lines and strip whitespace
 # 7) Validate length via Pydantic
 # Pre-compilation
-MULTISPACE_RX   = re.compile(r"\s+")
-DOT_NOGAP_RX    = re.compile(r"\.(\S)")
-NO_PUNCT_RX     = re.compile(r'[.?!…]("|”)?$')  # Ensure punctuation at the end of lines
-CTRL_CHAR_RX  = re.compile(r"[\x00-\x1f\x7f]")  # ASCII control characters
+MULTISPACE_RX = re.compile(r"\s+")
+DOT_NOGAP_RX = re.compile(r"\.(\S)")
+NO_PUNCT_RX = re.compile(r'[.?!…]("|”)?$')  # Ensure punctuation at the end of lines
+CTRL_CHAR_RX = re.compile(r"[\x00-\x1f\x7f]")  # ASCII control characters
+
 
 def data_filter(text: str) -> str:
     if not isinstance(text, str):
@@ -23,7 +24,7 @@ def data_filter(text: str) -> str:
 
     # Basic cleaning
     text = unicodedata.normalize("NFKC", html.unescape(text.strip()))
-    text = CTRL_CHAR_RX.sub("", text)          # Remove control characters
+    text = CTRL_CHAR_RX.sub("", text)  # Remove control characters
 
     # Append punctuation marks to lines
     lines = []
@@ -45,17 +46,24 @@ def data_filter(text: str) -> str:
 # Tokenization
 
 TOKENS = {
-    "BART": AutoTokenizer.from_pretrained("facebook/bart-base", cache_dir="/app/tokenizer/bart_source"),
-    "XLN" : AutoTokenizer.from_pretrained("xlnet-base-cased", cache_dir="/app/tokenizer/xln_source"),
-    "BERT": AutoTokenizer.from_pretrained("distilbert-base-uncased", cache_dir="/app/tokenizer/bert_source")
+    "BART": AutoTokenizer.from_pretrained(
+        "facebook/bart-base", cache_dir="/app/tokenizer/bart_source"
+    ),
+    "XLN": AutoTokenizer.from_pretrained(
+        "xlnet-base-cased", cache_dir="/app/tokenizer/xln_source"
+    ),
+    "BERT": AutoTokenizer.from_pretrained(
+        "distilbert-base-uncased", cache_dir="/app/tokenizer/bert_source"
+    ),
 }
 
 MAXLEN = {
     "BART": 1024,
-    "XLN" : 256,
-    "BERT": 512
+    "XLN": 256,
+    "BERT": 512,
 }  # However, the frontend limits word count to generally less than 1200 characters (about 120 words),
-   # so this MAXLEN is essentially unused.
+# so this MAXLEN is essentially unused.
+
 
 def build_payloads(raw_text: str) -> dict:
     """
@@ -63,6 +71,7 @@ def build_payloads(raw_text: str) -> dict:
     including token_type_ids for ONNX models that require it.
     """
     import numpy as np  # 确保导入 numpy
+
     payloads = {}
     for model in ("BART", "XLN", "BERT"):
         token = TOKENS[model](
@@ -70,7 +79,7 @@ def build_payloads(raw_text: str) -> dict:
             padding="max_length",
             truncation=True,
             max_length=MAXLEN[model],
-            return_tensors="np"
+            return_tensors="np",
         )
 
         input_ids = token["input_ids"]
@@ -85,79 +94,75 @@ def build_payloads(raw_text: str) -> dict:
             decoder_input_ids = token["decoder_input_ids"]
         else:
             decoder_input_ids = np.zeros_like(input_ids, dtype=np.int64)
-        if model=="XLN":
+        if model == "XLN":
             payloads[model] = {
                 "inputs": [
                     {
                         "name": "input_ids",
                         "shape": list(input_ids.shape),  # [1, L]
                         "datatype": "INT64",
-                        "data": input_ids.flatten().tolist()
+                        "data": input_ids.flatten().tolist(),
                     },
                     {
                         "name": "attention_mask",
                         "shape": list(attention_mask.shape),
                         "datatype": "INT64",
-                        "data": attention_mask.flatten().tolist()
+                        "data": attention_mask.flatten().tolist(),
                     },
                     {
                         "name": "token_type_ids",
                         "shape": list(token_type_ids.shape),
                         "datatype": "INT64",
-                        "data": token_type_ids.flatten().tolist()
-                    }
+                        "data": token_type_ids.flatten().tolist(),
+                    },
                 ],
                 "outputs": (
-                    [{"name": "logits"}] if model == "BART"
-                    else [{"name": "output"}]
-                )
+                    [{"name": "logits"}] if model == "BART" else [{"name": "output"}]
+                ),
             }
-        elif model=="BERT":
+        elif model == "BERT":
             payloads[model] = {
                 "inputs": [
                     {
                         "name": "input_ids",
                         "shape": list(input_ids.shape),  # [1, L]
                         "datatype": "INT64",
-                        "data": input_ids.flatten().tolist()
+                        "data": input_ids.flatten().tolist(),
                     },
                     {
                         "name": "attention_mask",
                         "shape": list(attention_mask.shape),
                         "datatype": "INT64",
-                        "data": attention_mask.flatten().tolist()
+                        "data": attention_mask.flatten().tolist(),
                     },
                 ],
                 "outputs": (
-                    [{"name": "logits"}] if model == "BART"
-                    else [{"name": "output"}]
-                )
+                    [{"name": "logits"}] if model == "BART" else [{"name": "output"}]
+                ),
             }
         else:
             payloads[model] = payloads[model] = {
-        "inputs": [
-            {
-                "name": "input_ids",
-                "shape": [input_ids.size],
-                "datatype": "INT64",
-                "data": input_ids.squeeze().tolist()
-            },
-            {
-                "name": "attention_mask",
-                "shape": [attention_mask.size],
-                "datatype": "INT64",
-                "data": attention_mask.squeeze().tolist()
-            },
-            {
-                "name": "decoder_input_ids",
-                "shape": [decoder_input_ids.size],
-                "datatype": "INT64",
-                "data": decoder_input_ids.squeeze().tolist()
+                "inputs": [
+                    {
+                        "name": "input_ids",
+                        "shape": [input_ids.size],
+                        "datatype": "INT64",
+                        "data": input_ids.tolist(),
+                    },
+                    {
+                        "name": "attention_mask",
+                        "shape": [attention_mask.size],
+                        "datatype": "INT64",
+                        "data": attention_mask.tolist(),
+                    },
+                    {
+                        "name": "decoder_input_ids",
+                        "shape": [decoder_input_ids.size],
+                        "datatype": "INT64",
+                        "data": decoder_input_ids.tolist(),
+                    },
+                ],
+                "outputs": [{"name": "logits"}],
             }
-        ],
-        "outputs": [{"name": "logits"}]
-    }
-
-
 
     return payloads
