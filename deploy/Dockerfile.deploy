@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM pytorch/pytorch:2.6.0-cuda12.6-cudnn9-runtime
 
 # 1. avoid pip cache
 ENV PIP_NO_CACHE_DIR=1 \
