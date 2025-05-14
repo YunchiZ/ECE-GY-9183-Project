@@ -757,7 +757,7 @@
 				"type": "prometheus",
 				"uid": "${DS_PROMETHEUS}"
 			},
-			"description": "Timeline of various metrics",
+			"description": "Model inference processing time",
 			"fieldConfig": {
 				"defaults": {
 					"color": {
@@ -767,7 +767,7 @@
 						"axisBorderShow": false,
 						"axisCenteredZero": false,
 						"axisColorMode": "text",
-						"axisLabel": "Value",
+						"axisLabel": "Time",
 						"axisPlacement": "auto",
 						"barAlignment": 0,
 						"barWidthFactor": 0.6,
@@ -809,7 +809,7 @@
 							}
 						]
 					},
-					"unit": "short"
+					"unit": "ms"
 				},
 				"overrides": []
 			},
@@ -819,7 +819,7 @@
 				"x": 0,
 				"y": 29
 			},
-			"id": 9,
+			"id": 12,
 			"options": {
 				"alertThreshold": true,
 				"legend": {
@@ -842,17 +842,14 @@
 						"uid": "${DS_PROMETHEUS}"
 					},
 					"editorMode": "code",
-					"exemplar": false,
-					"expr": "model_metrics",
-					"format": "time_series",
-					"instant": false,
+					"expr": "histogram_quantile(0.95, sum(rate(model_inference_seconds_bucket[$__rate_interval])) by (le, model))",
 					"interval": "",
-					"legendFormat": "{{model_name}} - {{metric_type}}",
+					"legendFormat": "{{model}}",
 					"range": true,
 					"refId": "A"
 				}
 			],
-			"title": "Metrics Timeline",
+			"title": "Model Inference Time",
 			"type": "timeseries"
 		},
 		{
@@ -960,7 +957,7 @@
 				"type": "prometheus",
 				"uid": "${DS_PROMETHEUS}"
 			},
-			"description": "Service processing time",
+			"description": "Timeline of various metrics",
 			"fieldConfig": {
 				"defaults": {
 					"color": {
@@ -970,7 +967,7 @@
 						"axisBorderShow": false,
 						"axisCenteredZero": false,
 						"axisColorMode": "text",
-						"axisLabel": "Time",
+						"axisLabel": "Value",
 						"axisPlacement": "auto",
 						"barAlignment": 0,
 						"barWidthFactor": 0.6,
@@ -1012,7 +1009,7 @@
 							}
 						]
 					},
-					"unit": "ms"
+					"unit": "short"
 				},
 				"overrides": []
 			},
@@ -1022,7 +1019,7 @@
 				"x": 0,
 				"y": 38
 			},
-			"id": 11,
+			"id": 9,
 			"options": {
 				"alertThreshold": true,
 				"legend": {
@@ -1045,114 +1042,17 @@
 						"uid": "${DS_PROMETHEUS}"
 					},
 					"editorMode": "code",
-					"expr": "histogram_quantile(0.95, sum(rate(model_service_time_bucket[$__rate_interval])) by (le, model_name))",
+					"exemplar": false,
+					"expr": "model_metrics",
+					"format": "time_series",
+					"instant": false,
 					"interval": "",
-					"legendFormat": "{{model_name}} - p95",
+					"legendFormat": "{{model_name}} - {{metric_type}}",
 					"range": true,
 					"refId": "A"
 				}
 			],
-			"title": "Service Time",
-			"type": "timeseries"
-		},
-		{
-			"datasource": {
-				"type": "prometheus",
-				"uid": "${DS_PROMETHEUS}"
-			},
-			"description": "Model inference processing time",
-			"fieldConfig": {
-				"defaults": {
-					"color": {
-						"mode": "palette-classic"
-					},
-					"custom": {
-						"axisBorderShow": false,
-						"axisCenteredZero": false,
-						"axisColorMode": "text",
-						"axisLabel": "Time",
-						"axisPlacement": "auto",
-						"barAlignment": 0,
-						"barWidthFactor": 0.6,
-						"drawStyle": "line",
-						"fillOpacity": 10,
-						"gradientMode": "none",
-						"hideFrom": {
-							"legend": false,
-							"tooltip": false,
-							"viz": false
-						},
-						"insertNulls": false,
-						"lineInterpolation": "linear",
-						"lineWidth": 1,
-						"pointSize": 5,
-						"scaleDistribution": {
-							"type": "linear"
-						},
-						"showPoints": "never",
-						"spanNulls": false,
-						"stacking": {
-							"group": "A",
-							"mode": "none"
-						},
-						"thresholdsStyle": {
-							"mode": "off"
-						}
-					},
-					"mappings": [],
-					"thresholds": {
-						"mode": "absolute",
-						"steps": [
-							{
-								"color": "green"
-							},
-							{
-								"color": "red",
-								"value": 80
-							}
-						]
-					},
-					"unit": "ms"
-				},
-				"overrides": []
-			},
-			"gridPos": {
-				"h": 9,
-				"w": 12,
-				"x": 12,
-				"y": 38
-			},
-			"id": 12,
-			"options": {
-				"alertThreshold": true,
-				"legend": {
-					"calcs": [],
-					"displayMode": "list",
-					"placement": "bottom",
-					"showLegend": true
-				},
-				"tooltip": {
-					"hideZeros": false,
-					"mode": "multi",
-					"sort": "none"
-				}
-			},
-			"pluginVersion": "12.0.0",
-			"targets": [
-				{
-					"datasource": {
-						"type": "prometheus",
-						"uid": "${DS_PROMETHEUS}"
-					},
-					"editorMode": "code",
-					"expr": "histogram_quantile(0.95, sum(rate(model_inference_seconds_bucket[$__rate_interval])) by (le, model_name))",
-					"interval": "",
-					"legendFormat": "{{model}}",
-					"range": true,
-					"refId": "A"
-				}
-			],
-			"title": "Model Inference Time",
+			"title": "Metrics Timeline",
 			"type": "timeseries"
 		},
 		{
@@ -1219,10 +1119,10 @@
 				"overrides": []
 			},
 			"gridPos": {
-				"h": 8,
+				"h": 9,
 				"w": 12,
-				"x": 0,
-				"y": 47
+				"x": 12,
+				"y": 38
 			},
 			"id": 13,
 			"options": {
@@ -1246,9 +1146,11 @@
 						"type": "prometheus",
 						"uid": "${DS_PROMETHEUS}"
 					},
+					"editorMode": "code",
 					"expr": "error_rate",
 					"interval": "",
 					"legendFormat": "{{error_type}}",
+					"range": true,
 					"refId": "A"
 				}
 			],
@@ -1279,6 +1181,6 @@
 	"timezone": "",
 	"title": "Model Monitoring Dashboard preload",
 	"uid": "model-monitoring-preload",
-	"version": 6,
+	"version": 7,
 	"weekStart": ""
 }
