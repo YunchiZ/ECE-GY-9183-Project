@@ -42,7 +42,6 @@ apt-mark showhold
 # h. create user group
 sudo groupadd -f docker; sudo usermod -aG docker $USER
 newgrp docker
-docker run hello-world
 
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl gnupg
