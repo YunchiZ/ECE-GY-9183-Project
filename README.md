@@ -51,6 +51,8 @@ These raw data sources flow into the MLOps platform via bulk upload (to `object 
 | Ziyan Zhao 🤠    | Model Serving & Monitoring        | https://github.com/YunchiZ/ECE-GY-9183-Project/commits/main/?author=ArcusNYU    |
 | Tianqi Xia 🏂    | Monitoring & Continous X Pipeline | https://github.com/YunchiZ/ECE-GY-9183-Project/commits/main/?author=TimothyXia9 |
 
+![Project Diagram](system2.png)
+
 ## III. Scale
 
 ### 1. Task Data & Training Time
