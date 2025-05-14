@@ -441,11 +441,11 @@
 					if (data.prediction_id !== prediction_id) throw new Error("Mismatched prediction_id.");
 
 					$sumOut.textContent = data.bart ?? "N/A";
-					$clsOut.textContent = typeof data.xln === "number" ? CLS_MAP[data.xln] : "N/A";
-					if (data.bert === 1) {
+					$clsOut.textContent = typeof data.bert === "number" ? CLS_MAP[data.bert] : "N/A";
+					if (data.xln === 1) {
 						$idOut.textContent = "True";
 						$idOut.style.color = "green";
-					} else if (data.bert === 0) {
+					} else if (data.xln === 0) {
 						$idOut.textContent = "Fake";
 						$idOut.style.color = "red";
 					} else {
