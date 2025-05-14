@@ -73,6 +73,8 @@ These raw data sources flow into the MLOps platform via bulk upload (to `object 
 
 ### 1. Cloud Native
 
+The System Architecture is shown in [System Diagram](https://github.com/YunchiZ/ECE-GY-9183-Project?tab=readme-ov-file#xisystem-diagram).
+
 ### 2. Infrastructure as Code
 
 All 3 VMs are configurated with scripts and services are deployed with docker compose. In the shell [infer](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/main/vm-infer.sh), [train](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/main/vm-train.sh), [ops](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/main/vm-ops.sh), bucket or block volume are mounted, all dependencies are installed, including the docker engine, Nvidia Toolkit(if needed).
@@ -137,7 +139,7 @@ We use two types of storage:
 ├── wandb_data/                         # folder to save wandb logging files
 |
 ├── on_test/
-│   ├── locustfile.py                   # ???改路径
+│   ├── locustfile.py
 │   └── sample.jsonl                    # datasheet for load testing
 
 
@@ -158,7 +160,7 @@ The sample input and output is shown as follows:
 | Outside Materials | Name                  | Sampel Input 1                                                                                                                         | Sampel Input 2                                                                                                  | Sample Output                                                                 |
 | ----------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | Data set 1        | CNN_Dailymail         | LONDON, England(Reuters)-- HarryPotter star Daniel Radcliffe gains accessto a reported ￡ 20million fortune as heturns 18 on Monday... | NAN                                                                                                             | Harry Potter starDaniel Radeliffe gets ￡ 20M fortune as heturns 18 Monday... |
-| Data set 2        | News Category Dataset | Resting is part of training. I'veconfirmed what I sortof already knew: I'mnot built for runningstreaks...                              | NAN                                                                                                             | WILLNESS                                                                      |
+| Data set 2        | News Category Dataset | Resting is part of training. I'veconfirmed what I sortof already knew: I'mnot built for runningstreaks...                              | NAN                                                                                                             | WELLNESS                                                                      |
 | Data set 3        | WELFake Dataset       | L4W ENFORCEMENT ONHIGH ALERT FollowingThreats Against Cops4nd whites On 9-11By#BlackLivesMatter And#FYFq11 Terrorists                  | RCEMENT ON HIGH ALERT Following Threats Against Cops4nd whites On 9-11By#BlackLivesMatter And#FYF911 Terrorists | 1                                                                             |
 
 ### Data Pipeline
@@ -172,7 +174,8 @@ The online evaluation data is read from MinIO by monitor container's auto trigge
 
 ### Data Dashboard
 
-![Data Dashboard](data_dashboard.png)
+The dashboard is integrated with Prometheus and monitors data quality metrics in real time. It tracks missing values using the data_quality_missing_values gauge, which records the number of NaN entries based on task and field. Duplicate entries are captured by the data_quality_duplicates gauge, while any data processing failures are counted using the data_quality_processing_errors counter, categorized by error type [metrics defination](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/f49a7bfce85137d94fd3fd56e0fe6fc2301ddf98/data_pipeline/etl_app.py#L28C1-L30C127).
+These metrics help ensure the reliability and integrity of the dataset during pipeline execution.
 
 ## VI. MODEL TRAINING
 
@@ -252,15 +255,11 @@ The goal of this task if to identify fake news. This helps users assess the cred
 
 ### 6) Scheduling Training Jobs
 
-Training jobs in this project are scheduled by HTTP API service, built using Flask and deployed in a containerized environment. This service exposes a "/train" endpoint, which can be called by etl to start model training.
-
--   After receiving request from ETL, the three models will be trained [in sequence](./train/app.py#L34)
-
-### 7) Training Strategies
-
 #### Ray Tune
 
 This project use [Ray Tune](./train/summarize/summary_app.py#L334) for hyperparameter tuning, and use [Grid Search](./train/summarize/summary_app.py#L311), [resource allocation](./train/summarize/summary_app.py#L337) and [custom training function](./train/summarize/summary_app.py#L326) to tune more efficiently.
+
+### 7) Training Strategies
 
 #### LoRA
 
@@ -386,11 +385,13 @@ All stage transitions are protected with thread locks to ensure consistency. Mod
 
 Models are evaluated with the latest batch of data, with performance metrics recorded in a tracking list. Model metrics are collected via Prometheus and visualized in Grafana dashboards for real-time monitoring. User feedback is captured and stored in our database as new labeled data, which is then uploaded to a Minio bucket for future model retraining, thus completing the feedback loop.![img](metric_dashboard.png)
 
-### data shift
+### Data shift
 
 Data shift is detected with label distribution, which is calculated when the highest label and the lowest label reached certain threshold. If data shift is detected, the model will be retrained with collected new data. New data are generated based on the user feedback, which is simulated in this project.
 
-### model performance
+![Data Dashboard](data_dashboard.png)
+
+### Model performance
 
 Model are evaluated on ROUGE for text summarization, and accuracy for classification and identification. The performance is calculated with the last batch of data, and recorded in list. The average history performance is compared with the last batch of data, to check if the performance drop is reached the threshold.
 
@@ -408,9 +409,5 @@ or a manual retraining can be triggered by a [shell command](https://github.com/
 After the retraining is triggered, ETL pipeline will obtain data from user feedback(simulated in this project), then process to train with new data.
 
 ## XI.System diagram
-
-<!-- Overall digram of system. Doesn't need polish, does need to show all the pieces.
-Must include: all the hardware, all the containers/software platforms, all the models,
-all the data. -->
 
 ![Project Diagram](diagram.png)
