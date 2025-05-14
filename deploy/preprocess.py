@@ -1,6 +1,19 @@
 import re, html, unicodedata
 from transformers import AutoTokenizer
 import numpy as np
+import logging
+import os
+
+train_data_dir = "/app/models"
+deploy_data_dir = "/app/deploy_data"
+
+# ---------------- Logging Initialization ----------------
+log_file = os.path.join(train_data_dir, "app.log")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    filemode="a",
+)
 
 # -------- Data Filtering --------
 # This section includes:
@@ -153,5 +166,7 @@ def build_payloads(raw_text: str) -> dict:
                     {"name": "output__0"}
                 ]
             }
+            logging.info("input_ids shape: %s", input_ids.shape)
+            logging.info("attention_mask shape: %s", attention_mask.shape)
 
     return payloads
