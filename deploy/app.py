@@ -687,18 +687,14 @@ async def predict(data: PredictIn):
 
         # --------------------- Parse Output ------------------------------
         if rsp and model == "BART":
-            tokens = np.array(rsp["outputs"][0]["data"])
+            logits = np.array(rsp["outputs"][0]["data"]).astype(np.float32)  # [1, T, V]
 
-            if tokens.ndim == 2 and tokens.shape[0] == 1:
-                token_ids = tokens[0].tolist()
-            elif tokens.ndim == 1:
-                token_ids = tokens.tolist()
-            else:
-                logging.warning("Unexpected output shape: %s", tokens.shape)
-                token_ids = tokens.flatten().tolist()
+            # reshape 成 (T, V)
+            if logits.ndim == 3 and logits.shape[0] == 1:
+                logits = logits[0]  # [1, T, V] -> [T, V]
 
+            token_ids = logits.argmax(axis=-1).tolist()  # [T]
             pred_text = TOKENS["BART"].decode(token_ids, skip_special_tokens=True)
-
         elif rsp:
             logits = np.array(rsp["outputs"][0]["data"])
             pred_text = int(logits.argmax())
@@ -759,15 +755,13 @@ async def predict_(
                     rsp, t_elapsed = None, -1
 
             if rsp and model == "BART":
-                tokens = np.array(rsp["outputs"][0]["data"])
-                if tokens.ndim == 2 and tokens.shape[0] == 1:
-                    token_ids = tokens[0].tolist()  # [1, T] -> [T]
-                elif tokens.ndim == 1:
-                    token_ids = tokens.tolist()
-                else:
-                    logging.warning("Unexpected BART output shape: %s", tokens.shape)
-                    token_ids = tokens.flatten().tolist()
+                logits = np.array(rsp["outputs"][0]["data"]).astype(np.float32)  # [1, T, V]
 
+                # reshape 成 (T, V)
+                if logits.ndim == 3 and logits.shape[0] == 1:
+                    logits = logits[0]  # [1, T, V] -> [T, V]
+
+                token_ids = logits.argmax(axis=-1).tolist()  # [T]
                 pred = TOKENS["BART"].decode(token_ids, skip_special_tokens=True)
 
             elif rsp:
