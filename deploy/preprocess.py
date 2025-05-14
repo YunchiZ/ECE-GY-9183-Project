@@ -134,32 +134,29 @@ def build_payloads(raw_text: str) -> dict:
                 )
             }
         else:
-            payloads[model] = {
-                "inputs": [
-                    {
-                        "name": "input_ids",
-                        "shape": list(input_ids.shape),  # [1, L]
-                        "datatype": "INT64",
-                        "data": input_ids.flatten().tolist()
-                    },
-                    {
-                        "name": "attention_mask",
-                        "shape": list(attention_mask.shape),
-                        "datatype": "INT64",
-                        "data": attention_mask.flatten().tolist()
-                    },
-                    {
-                        "name": "decoder_input_ids",
-                        "shape": list(decoder_input_ids.shape),
-                        "datatype": "INT64",
-                        "data": decoder_input_ids.flatten().tolist()
-                    }
-                ],
-                "outputs": (
-                    [{"name": "logits"}] if model == "BART"
-                    else [{"name": "output"}]
-                )
+            payloads[model] = payloads[model] = {
+        "inputs": [
+            {
+                "name": "input_ids",
+                "shape": [input_ids.size],
+                "datatype": "INT64",
+                "data": input_ids.squeeze().tolist()
+            },
+            {
+                "name": "attention_mask",
+                "shape": [attention_mask.size],
+                "datatype": "INT64",
+                "data": attention_mask.squeeze().tolist()
+            },
+            {
+                "name": "decoder_input_ids",
+                "shape": [decoder_input_ids.size],
+                "datatype": "INT64",
+                "data": decoder_input_ids.squeeze().tolist()
             }
+        ],
+        "outputs": [{"name": "logits"}]
+    }
 
 
 
