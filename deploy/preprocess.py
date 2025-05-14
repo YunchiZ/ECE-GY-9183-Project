@@ -151,7 +151,7 @@ def build_payloads(raw_text: str) -> dict:
                 "inputs": [
                     {
                         "name": "input_ids",
-                        "shape": list(input_ids.shape),  # e.g., [1, L]
+                        "shape": list(input_ids.shape),  # dynamically determined shape, e.g., [1, L]
                         "datatype": "INT64",
                         "data": input_ids.flatten().tolist()
                     },
