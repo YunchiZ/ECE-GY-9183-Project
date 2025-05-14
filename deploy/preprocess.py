@@ -80,7 +80,7 @@ def build_payloads(raw_text: str) -> dict:
     for model in ("BART", "XLN", "BERT"):
         token = TOKENS[model](
             raw_text,
-            padding="max_length",
+            padding=True,
             truncation=True,
             max_length=MAXLEN[model],
             return_tensors="np"
