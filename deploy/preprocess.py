@@ -88,35 +88,36 @@ def build_payloads(raw_text: str) -> dict:
         attention_mask = token["attention_mask"]
 
         if model == "BART":
-            # input_ids 和 attention_mask: shape 为 [seq_len]
-            input_ids_1d = input_ids.squeeze(0)  # 从 [1, L] → [L]
-            attention_mask_1d = attention_mask.squeeze(0)
+            # # input_ids 和 attention_mask: shape 为 [seq_len]
+            # input_ids_1d = input_ids.squeeze(0)  # 从 [1, L] → [L]
+            # attention_mask_1d = attention_mask.squeeze(0)
+            #
+            # payloads["BART"] = {
+            #     "inputs": [
+            #         {
+            #             "name": "input_ids",
+            #             "shape": [input_ids_1d.shape[0]],  # e.g. [476]
+            #             "datatype": "INT64",
+            #             "data": input_ids_1d.tolist()
+            #         },
+            #         {
+            #             "name": "attention_mask",
+            #             "shape": [attention_mask_1d.shape[0]],
+            #             "datatype": "INT64",
+            #             "data": attention_mask_1d.tolist()
+            #         }
+            #     ],
+            #     "outputs": [
+            #         {"name": "logits"}
+            #     ]
+            # }
 
-            payloads["BART"] = {
-                "inputs": [
-                    {
-                        "name": "input_ids",
-                        "shape": [input_ids_1d.shape[0]],  # e.g. [476]
-                        "datatype": "INT64",
-                        "data": input_ids_1d.tolist()
-                    },
-                    {
-                        "name": "attention_mask",
-                        "shape": [attention_mask_1d.shape[0]],
-                        "datatype": "INT64",
-                        "data": attention_mask_1d.tolist()
-                    }
-                ],
-                "outputs": [
-                    {"name": "logits"}
-                ]
-            }
-
-            logging.info("input_ids shape (1D): %s", input_ids_1d.shape)
-            logging.info("attention_mask shape (1D): %s", attention_mask_1d.shape)
-
-            logging.info("input_ids shape: %s", input_ids.shape)
-            logging.info("attention_mask shape: %s", attention_mask.shape)
+            # logging.info("input_ids shape (1D): %s", input_ids_1d.shape)
+            # logging.info("attention_mask shape (1D): %s", attention_mask_1d.shape)
+            #
+            # logging.info("input_ids shape: %s", input_ids.shape)
+            # logging.info("attention_mask shape: %s", attention_mask.shape)
+            continue
 
         elif model == "XLN":
             token_type_ids = token.get("token_type_ids", np.zeros_like(input_ids, dtype=np.int64))

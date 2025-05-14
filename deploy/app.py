@@ -13,6 +13,13 @@ from preprocess import *  # Contains functions for filtering and tokenizing info
 from Triton import *  # Contains Triton inference and Triton weight loading functions
 
 
+from transformers import BartForConditionalGeneration, BartTokenizer
+import torch
+
+BART_MODEL = None
+BART_TOKENIZER = None
+
+
 train_data_dir = "/app/models"
 deploy_data_dir = "/app/deploy_data"
 
@@ -99,10 +106,15 @@ async def init():
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    global MAIN_LOOP
+    global MAIN_LOOP, BART_MODEL, BART_TOKENIZER
     MAIN_LOOP = asyncio.get_running_loop()
     logging.info(f"MAIN_LOOP initialized: {MAIN_LOOP}")
     global_status_visual(stage, serving_name, candidate_name)
+    logging.info("Loading local BART model...")
+    BART_MODEL = BartForConditionalGeneration.from_pretrained("facebook/bart-large", cache_dir="/app/tokenizer/bart_source")
+    BART_MODEL.eval().cuda()
+    BART_TOKENIZER = BartTokenizer.from_pretrained("facebook/bart-large", cache_dir="/app/tokenizer/bart_source")
+    logging.info("Local BART model loaded.")
 
     # 调用 init() 初始化
     try:
@@ -615,58 +627,26 @@ class PredictIn(BaseModel):  # Lightweight validation for BFF
 
 @app.post("/predict")
 async def predict(data: PredictIn):
-    # FastAPI automatically unpacks JSON information, instantiating it as a PredictIn object assigned to `data`.
-    """
-    In the model inference section, this route acts as a lightweight BFF (Backend For Frontend)
-    and records the results produced by the API.
-    The response is only returned after the model prediction results are fully obtained.
-
-    Full logic chain:
-    1. Pre-package payload information for Triton.
-    2. Acquire global variables under a thread lock, transfer them to intermediate variables, and immediately release the lock.
-    3. For each of the three tasks, if the stage is "normal" or "shadow", send a request to Triton immediately while recording time.
-    4. Wait for Triton to return the results, validate and package them (e.g., set results to None if Triton is unresponsive).
-    5. Stop the timer, package the results into a JSON, and start a second thread for candidate predictions and result recording.
-    6. Return the results to the frontend.
-
-    The process ensures the shortest possible response time for essential tasks.
-    """
-
-    # .json info has been checked when loaded, passed information is already validated
-    # -> .json: {"input":"xxxx", "prediction_id":"xxx"}
-    # 1. Payload Packing
     payloads = build_payloads(data.text)
 
-    # 2. Global status snapshot
     global stage, serving_name, candidate_name
     with status_lock:
         stg = stage.copy()
         srv = serving_name.copy()
         cand = candidate_name.copy()
-    # models = ["BART", "XLN", "BERT"]
+
     serving_res: list[Dict[str, Any] | None] = [None] * 3
     candidate_res: list[Dict[str, Any] | None] = [None] * 3
     frontend_res = {}
 
-    # 3. Model inference definition
     async def infer(idx: int):
-        # model = models[idx]
-        model, m_ver = split_model_tag(srv[idx])  # e.g. ('BART','0')
+        model, m_ver = split_model_tag(srv[idx])  # e.g. ("BART", "0")
         ver = int(m_ver)
-        # Create an intermediate variable `result_slot` to determine which model performs the final inference
-        result_slot = serving_res  # Default to write into `serving`
-        role = "serving"  # Prometheus business time observation default: `serving`
+        result_slot = serving_res
+        role = "serving"
 
-        # ---------- Canary: Use probability `p` to route to candidate --------------------
         if stg[idx] == "canary":
-            if (
-                idx == 0
-            ):  # No need for global thread lock when only reading global variables
-                n_calls = api_call_count_0
-            elif idx == 1:
-                n_calls = api_call_count_1
-            else:
-                n_calls = api_call_count_2
+            n_calls = [api_call_count_0, api_call_count_1, api_call_count_2][idx]
             p = p_list[min(n_calls // (BATCH * factor), len(p_list) - 1)]
             if random.random() < p and cand[idx]:
                 ver = int(split_model_tag(cand[idx])[1])
@@ -675,46 +655,47 @@ async def predict(data: PredictIn):
             else:
                 logging.info("No candidate model found in the Canary stage.")
 
-        # --------------------- Send Inference ------------------------------
-        with infer_hist.labels(model=model, role=role).time():  # <── Timer point
+        with infer_hist.labels(model=model, role=role).time():
             try:
                 t0 = time.perf_counter()
-                rsp = await triton_infer(model, ver, payloads[model])
-                t_elapsed = time.perf_counter() - t0
+                if model == "BART":
+                    # --- 本地推理逻辑 ---
+                    inputs = BART_TOKENIZER(data.text, return_tensors="pt", truncation=True, max_length=1024)
+                    input_ids = inputs["input_ids"].cuda()
+                    attention_mask = inputs["attention_mask"].cuda()
+                    with torch.no_grad():
+                        output = BART_MODEL.generate(
+                            input_ids=input_ids,
+                            attention_mask=attention_mask,
+                            max_new_tokens=128
+                        )
+                    pred_text = BART_TOKENIZER.decode(output[0], skip_special_tokens=True)
+                    t_elapsed = time.perf_counter() - t0
+
+                else:
+                    # Triton 推理（保持不变）
+                    rsp = await triton_infer(model, ver, payloads[model])
+                    t_elapsed = time.perf_counter() - t0
+                    if rsp:
+                        logits = np.array(rsp["outputs"][0]["data"])
+                        pred_text = int(logits.argmax())
+                    else:
+                        pred_text = None
+
             except Exception as e:
                 logging.error("%s v%s inference failed: %s", model, ver, e)
-                rsp, t_elapsed = None, -1
-
-        # --------------------- Parse Output ------------------------------
-        if rsp and model == "BART":
-            logits = np.array(rsp["outputs"][0]["data"]).astype(np.float32)  # [1, T, V]
-
-            # reshape 成 (T, V)
-            if logits.ndim == 3 and logits.shape[0] == 1:
-                logits = logits[0]  # [1, T, V] -> [T, V]
-
-            token_ids = logits.argmax(axis=-1).tolist()  # [T]
-            pred_text = TOKENS["BART"].decode(token_ids, skip_special_tokens=True)
-        elif rsp:
-            logits = np.array(rsp["outputs"][0]["data"])
-            pred_text = int(logits.argmax())
-        else:
-            pred_text = None
+                pred_text, t_elapsed = None, -1
 
         result_slot[idx] = {
             "id": data.prediction_id,
-            "text": data.text,  # Store the original text for all three tasks
+            "text": data.text,
             "pred": pred_text,
             "time": round(t_elapsed, 4),
         }
-        frontend_res[model.lower()] = (
-            pred_text  # Return information to the frontend, note it's in lowercase
-        )
+        frontend_res[model.lower()] = pred_text
 
-    # 4. Model inference
     await asyncio.gather(*(infer(i) for i in range(3)))
 
-    # 5. Task creation
     asyncio.create_task(
         predict_(
             orig_text=data.text,
@@ -727,8 +708,8 @@ async def predict(data: PredictIn):
         )
     )
 
-    # 6. Return to front-end
     return {"prediction_id": data.prediction_id, **frontend_res}
+
 
 
 async def predict_(
