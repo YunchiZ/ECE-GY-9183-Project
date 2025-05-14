@@ -161,12 +161,6 @@ def build_payloads(raw_text: str) -> dict:
                         "datatype": "INT64",
                         "data": decoder_input_ids.flatten().tolist(),
                     },
-                    {
-                        "name": "max_length",
-                        "shape": [],
-                        "datatype": "INT32",
-                        "data": [256],
-                    },
                 ],
                 "outputs": [{"name": "logits"}],
             }
