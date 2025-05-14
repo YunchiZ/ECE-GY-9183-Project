@@ -151,13 +151,13 @@ def build_payloads(raw_text: str) -> dict:
                 "inputs": [
                     {
                         "name": "input_ids",
-                        "shape": list(input_ids.shape),  # dynamically determined shape, e.g., [1, L]
+                        "shape": [input_ids.shape[1]],  # 去掉batch维度，例如[1024]
                         "datatype": "INT64",
                         "data": input_ids.flatten().tolist()
                     },
                     {
                         "name": "attention_mask",
-                        "shape": list(attention_mask.shape),
+                        "shape": [attention_mask.shape[1]],  # 去掉batch维度，例如[1024]
                         "datatype": "INT64",
                         "data": attention_mask.flatten().tolist()
                     }
@@ -166,6 +166,7 @@ def build_payloads(raw_text: str) -> dict:
                     {"name": "logits"}
                 ]
             }
+
             logging.info("input_ids shape: %s", input_ids.shape)
             logging.info("attention_mask shape: %s", attention_mask.shape)
 
