@@ -121,4 +121,4 @@ if __name__ == "__main__":
     print(f"- Feedback: http://{local_ip}:{port}/feedback")
     print(f"API URL: {API_URL}")
 
-    # app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=True)

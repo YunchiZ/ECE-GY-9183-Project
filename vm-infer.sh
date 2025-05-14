@@ -12,7 +12,7 @@ set -e  # exit when mistake
 
 # a. install drive
 sudo apt-get update   # renew apt-get
-sudo apt-get -y install ca-certificates curl  # install license & install tool curl
+sudo apt-get -y install ca-certificates curl gnupg 
 # b. setup Docker GPG keys
 sudo install -m 0755 -d /etc/apt/keyrings # create menu for storing GPG keys(authority: 0755)
 sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc # install keys for validation docker pack
@@ -44,14 +44,12 @@ sudo groupadd -f docker; sudo usermod -aG docker $USER
 newgrp docker
 
 sudo apt-get update
-sudo apt-get install -y ca-certificates curl gnupg
+sudo apt-get install -y ca-certificates curl 
 
 # install container toolkit
 curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
 
 
-sudo apt-get update
-sudo apt-get install -y curl
 
 curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
 
