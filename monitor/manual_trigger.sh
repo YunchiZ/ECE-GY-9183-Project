@@ -17,5 +17,5 @@ URL="http://${FIP_TRAIN_VALUE}:8010/trigger"  # Adjust the port and endpoint as 
 echo "Making request to: $URL"
 curl -X POST \
      -H "Content-Type: application/json" \
-     -d '{"type": trigger, "index": index}' \
+     -d '{"type": trigger, "index": index, "task":trigger}' \
      $URL
