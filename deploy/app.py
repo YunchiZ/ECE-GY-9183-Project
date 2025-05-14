@@ -687,8 +687,18 @@ async def predict(data: PredictIn):
 
         # --------------------- Parse Output ------------------------------
         if rsp and model == "BART":
-            tokens = np.array(rsp["outputs"][0]["data"])
-            pred_text = TOKENS["BART"].decode(tokens, skip_special_tokens=True)
+            tokens = np.array(rsp["outputs"][0]["data"])  # 可能 shape 是 [1, T] or [T]
+
+            # 统一变成 1D list
+            if tokens.ndim == 2 and tokens.shape[0] == 1:
+                token_ids = tokens[0].tolist()
+            elif tokens.ndim == 1:
+                token_ids = tokens.tolist()
+            else:
+                logging.warning("Unexpected BART output shape: %s", tokens.shape)
+                token_ids = tokens.flatten().tolist()
+
+            pred_text = TOKENS["BART"].decode(token_ids, skip_special_tokens=True)
         elif rsp:
             logits = np.array(rsp["outputs"][0]["data"])
             pred_text = int(logits.argmax())
@@ -783,4 +793,4 @@ def metrics():
     """
 
     return PlainTextResponse(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
-    return Response(content=generate_latest(), content_type=CONTENT_TYPE_LATEST)
+    # return Response(content=generate_latest(), content_type=CONTENT_TYPE_LATEST)

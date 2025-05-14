@@ -147,23 +147,11 @@ def build_payloads(raw_text: str) -> dict:
                         "shape": list(attention_mask.shape),
                         "datatype": "INT64",
                         "data": attention_mask.flatten().tolist()
-                    },
-                    {
-                        "name": "decoder_input_ids",
-                        "shape": list(decoder_input_ids.shape),
-                        "datatype": "INT64",
-                        "data": decoder_input_ids.flatten().tolist()
-                    },
-                    {
-                        "name": "max_length",
-                        "shape": [],
-                        "datatype": "INT32",
-                        "data": [256]
                     }
                 ],
-                "outputs": [{"name": "logits"}]
+                "outputs": [
+                    {"name": "output__0"}  # ✅ 默认输出名，除非你手动设置过
+                ]
             }
-
-
 
     return payloads
