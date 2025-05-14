@@ -152,13 +152,13 @@ def build_payloads(raw_text: str) -> dict:
                 "inputs": [
                     {
                         "name": "input_ids",
-                        "shape": [input_ids.shape[1]],  # 去掉batch维度，例如[1024]
+                        "shape": [input_ids.shape[1]],
                         "datatype": "INT64",
                         "data": input_ids[0].tolist()
                     },
                     {
                         "name": "attention_mask",
-                        "shape": [attention_mask.shape[1]],  # 去掉batch维度，例如[1024]
+                        "shape": [attention_mask.shape[1]],
                         "datatype": "INT64",
                         "data": attention_mask[0].tolist()
                     }
