@@ -783,9 +783,9 @@ def metrics():
     agent = get_update_agent()
 
     for i in range((len(serving))):
-        agent.update_model_metrics(i, serving[i], s_metrics[i])
+        agent.update_model_metrics(i, serving[i], s_metrics[-1][i])
         if candidate[i] is not None:
-            agent.update_model_metrics(i, candidate[i], c_metrics[i])
+            agent.update_model_metrics(i, candidate[i], c_metrics[-1][i])
             agent.update_error_rate(candidate[i], "candidate", error_rates[i])
         else:
             agent.update_error_rate(serving[i], "serving", error_rates[i])
