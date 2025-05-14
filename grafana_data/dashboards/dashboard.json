@@ -401,12 +401,19 @@
 						{
 							"options": {
 								"canary": {
+									"index": 2,
 									"text": "Canary"
 								},
+								"classification": {
+									"index": 3,
+									"text": "Classification"
+								},
 								"serving": {
+									"index": 1,
 									"text": "Serving"
 								},
 								"shadow": {
+									"index": 0,
 									"text": "Shadow"
 								}
 							},
@@ -477,7 +484,7 @@
 						"uid": "${DS_PROMETHEUS}"
 					},
 					"editorMode": "code",
-					"expr": "topk(1,task_stage_info{task=\"task1\"}) ",
+					"expr": "topk(1,task_stage_info{task=\"summary\"}) ",
 					"hide": false,
 					"instant": true,
 					"interval": "",
@@ -491,7 +498,7 @@
 					},
 					"editorMode": "code",
 					"exemplar": false,
-					"expr": "topk(1,candidate_model_info{task=\"task1\"})",
+					"expr": "topk(1,candidate_model_info{task=\"summary\"})",
 					"hide": false,
 					"instant": true,
 					"legendFormat": "__auto",
@@ -505,7 +512,7 @@
 					},
 					"editorMode": "code",
 					"exemplar": false,
-					"expr": "topk(1,serving_model_info{task=\"task1\"})",
+					"expr": "topk(1,serving_model_info{task=\"summary\"})",
 					"hide": false,
 					"instant": true,
 					"legendFormat": "__auto",
@@ -518,7 +525,7 @@
 						"uid": "${DS_PROMETHEUS}"
 					},
 					"editorMode": "code",
-					"expr": "topk(1,task_stage_info{task=\"task2\"}) ",
+					"expr": "topk(1,task_stage_info{task=\"identification\"}) ",
 					"hide": false,
 					"instant": true,
 					"interval": "",
@@ -531,7 +538,7 @@
 						"uid": "${DS_PROMETHEUS}"
 					},
 					"editorMode": "code",
-					"expr": "topk(1,task_stage_info{task=\"task3\"}) ",
+					"expr": "topk(1,task_stage_info{task=\"classification\"}) ",
 					"hide": false,
 					"instant": true,
 					"interval": "",
@@ -545,7 +552,7 @@
 					},
 					"editorMode": "code",
 					"exemplar": false,
-					"expr": "topk(1,candidate_model_info{task=\"task2\"})",
+					"expr": "topk(1,candidate_model_info{task=\"identification\"})",
 					"hide": false,
 					"instant": true,
 					"legendFormat": "__auto",
@@ -559,7 +566,7 @@
 					},
 					"editorMode": "code",
 					"exemplar": false,
-					"expr": "topk(1,candidate_model_info{task=\"task3\"})",
+					"expr": "topk(1,candidate_model_info{task=\"classification\"})",
 					"hide": false,
 					"instant": true,
 					"legendFormat": "__auto",
@@ -573,7 +580,7 @@
 					},
 					"editorMode": "code",
 					"exemplar": false,
-					"expr": "topk(1,serving_model_info{task=\"task2\"})",
+					"expr": "topk(1,serving_model_info{task=\"identification\"})",
 					"hide": false,
 					"instant": true,
 					"legendFormat": "__auto",
@@ -587,7 +594,7 @@
 					},
 					"editorMode": "code",
 					"exemplar": false,
-					"expr": "topk(1,serving_model_info{task=\"task3\"})",
+					"expr": "topk(1,serving_model_info{task=\"classification\"})",
 					"hide": false,
 					"instant": true,
 					"legendFormat": "__auto",
@@ -1272,6 +1279,6 @@
 	"timezone": "",
 	"title": "Model Monitoring Dashboard preload",
 	"uid": "model-monitoring-preload",
-	"version": 4,
+	"version": 6,
 	"weekStart": ""
 }
