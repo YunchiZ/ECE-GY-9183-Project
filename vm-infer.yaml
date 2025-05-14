@@ -15,6 +15,7 @@ services:
                     --model-control-mode=poll
                     --http-port=8000
                     --allow-http=true
+                    --log-verbose=1  
                     --log-error=true
                     --strict-model-config=false  
                     --model-load-thread-count=4  
