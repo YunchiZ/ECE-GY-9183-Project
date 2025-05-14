@@ -163,7 +163,7 @@ def build_payloads(raw_text: str) -> dict:
                     }
                 ],
                 "outputs": [
-                    {"name": "output__0"}
+                    {"name": "logits"}
                 ]
             }
             logging.info("input_ids shape: %s", input_ids.shape)
