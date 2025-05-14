@@ -119,5 +119,6 @@ if __name__ == "__main__":
     print(f"API endpoints:")
     print(f"- Predict: http://{local_ip}:{port}/predict")
     print(f"- Feedback: http://{local_ip}:{port}/feedback")
+    print(f"API URL: {API_URL}")
 
     app.run(host="0.0.0.0", port=port, debug=True)

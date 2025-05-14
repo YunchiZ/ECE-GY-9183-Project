@@ -6,7 +6,7 @@ ENV PIP_NO_CACHE_DIR=1 \
 
 # 2. Work Directory
 WORKDIR /app
- 
+
 
 # 3. Copy Env 
 COPY requirements_deploy.txt .
