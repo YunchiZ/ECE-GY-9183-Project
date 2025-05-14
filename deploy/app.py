@@ -2,6 +2,7 @@ import threading, numpy as np
 
 # from threading import Thread
 from fastapi import FastAPI, Response
+from fastapi.responses import PlainTextResponse
 from starlette.types import ASGIApp, Scope, Receive, Send
 from contextlib import asynccontextmanager
 from prometheus_client import Histogram, generate_latest, CONTENT_TYPE_LATEST, Gauge
@@ -780,4 +781,6 @@ def metrics():
     """
     Expose Prometheus metrics for monitoring.
     """
+
+    return PlainTextResponse(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
     return Response(content=generate_latest(), content_type=CONTENT_TYPE_LATEST)
