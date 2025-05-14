@@ -141,7 +141,7 @@ def build_payloads(raw_text: str) -> dict:
                 ),
             }
         else:
-            payloads[model] = {
+            payloads["BART"] = {
                 "inputs": [
                     {
                         "name": "input_ids",
@@ -160,6 +160,12 @@ def build_payloads(raw_text: str) -> dict:
                         "shape": list(decoder_input_ids.shape),
                         "datatype": "INT64",
                         "data": decoder_input_ids.flatten().tolist(),
+                    },
+                    {
+                        "name": "max_length",
+                        "shape": [],
+                        "datatype": "INT32",
+                        "data": [256],
                     },
                 ],
                 "outputs": [{"name": "logits"}],
