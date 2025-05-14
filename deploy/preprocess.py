@@ -141,25 +141,25 @@ def build_payloads(raw_text: str) -> dict:
                 ),
             }
         else:
-            payloads[model] = payloads[model] = {
+            payloads[model] = {
                 "inputs": [
                     {
                         "name": "input_ids",
-                        "shape": [input_ids.size],
+                        "shape": list(input_ids.shape),  # [1, L]
                         "datatype": "INT64",
-                        "data": input_ids.tolist(),
+                        "data": input_ids.flatten().tolist(),
                     },
                     {
                         "name": "attention_mask",
-                        "shape": [attention_mask.size],
+                        "shape": list(attention_mask.shape),
                         "datatype": "INT64",
-                        "data": attention_mask.tolist(),
+                        "data": attention_mask.flatten().tolist(),
                     },
                     {
                         "name": "decoder_input_ids",
-                        "shape": [decoder_input_ids.size],
+                        "shape": list(decoder_input_ids.shape),
                         "datatype": "INT64",
-                        "data": decoder_input_ids.tolist(),
+                        "data": decoder_input_ids.flatten().tolist(),
                     },
                 ],
                 "outputs": [{"name": "logits"}],
