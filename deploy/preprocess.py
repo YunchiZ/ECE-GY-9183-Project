@@ -88,6 +88,7 @@ def build_payloads(raw_text: str) -> dict:
 
         input_ids = token["input_ids"]
         attention_mask = token["attention_mask"]
+        # seq_len = input_ids.shape[1]
 
         # 检查 token_type_ids 是否在输出中，否则补一个全 0 的
         if "token_type_ids" in token:
@@ -153,13 +154,13 @@ def build_payloads(raw_text: str) -> dict:
                         "name": "input_ids",
                         "shape": [input_ids.shape[1]],  # 去掉batch维度，例如[1024]
                         "datatype": "INT64",
-                        "data": input_ids.flatten().tolist()
+                        "data": input_ids[0].tolist()
                     },
                     {
                         "name": "attention_mask",
                         "shape": [attention_mask.shape[1]],  # 去掉batch维度，例如[1024]
                         "datatype": "INT64",
-                        "data": attention_mask.flatten().tolist()
+                        "data": attention_mask[0].tolist()
                     }
                 ],
                 "outputs": [
