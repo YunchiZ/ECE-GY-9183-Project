@@ -341,10 +341,7 @@ To ensure that trained models meet a minimum quality before deployment, we imple
 
 -   `test_dataset`, `test_labels` and `latest_model_path` are saved automatically during training.
 -   The model is evaluated using [evaluate_model_accuracy](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/e14a42de5edf910c6a227e0530387f6793656958/train/classification/tests/eval_model.py#L9).
--   The test fails if accuracy is below 0.7.### 6. Load Test
-
--   **Full API Load Test**
-    To assess the end-to-end performance of the deployed API, [Locust](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/8cb63098983cc0441fb9744dc9b2f988848c7dc2/vm-ops.yaml#L68) is employed, an open-source load testing tool. The [test](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/main/deploy/locustfile.py) simulates multiple concurrent users by sending randomized text samples to the `/predict` endpoint at variable intervals. Key performance metrics such as request throughput, latency, and failure rates are collected during various test scenarios, including baseline, stress, and burst load patterns.
+-   The test fails if accuracy is below 0.7.
 
 ### 6. Load Test
 
