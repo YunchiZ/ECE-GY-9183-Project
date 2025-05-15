@@ -349,7 +349,7 @@ To ensure that trained models meet a minimum quality before deployment, we imple
 -   The model is evaluated using [evaluate_model_accuracy](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/e14a42de5edf910c6a227e0530387f6793656958/train/classification/tests/eval_model.py#L9).
 -   The test fails if accuracy is below 0.7.
 
-### 6. Load Test
+### 6. Load Test(*Not fully verified on Chameleon)
 
 -   **Full API Load Test**
     To assess the end-to-end performance of the deployed API, [Locust](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/8cb63098983cc0441fb9744dc9b2f988848c7dc2/vm-ops.yaml#L68) is employed, an open-source load testing tool. The [test](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/main/deploy/locustfile.py) simulates multiple concurrent users by sending randomized text samples to the `/predict` endpoint at variable intervals. Key performance metrics such as request throughput, latency, and failure rates are collected during various test scenarios, including baseline, stress, and burst load patterns.
@@ -359,32 +359,28 @@ To ensure that trained models meet a minimum quality before deployment, we imple
 
 ## VIII. Staged Deployment
 
-Initially, the first model that meets the metric requirements is tagged as the "serving" model. When a new model completes training, it goes through the [following](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/57f553de7b4885293e8bd3f9988eaa30cfe6c468/monitor/app.py#L601) deployment process:
+Initially, the first model that \is deployed on object container is tagged as the "serving" model. When a newly trained `candidate` model passes the offline test and online test, it goes through the [following](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/57f553de7b4885293e8bd3f9988eaa30cfe6c468/monitor/app.py#L601) deployment process:
 
 -   Shadow Stage:
 
-    The new model is tagged as "shadow" and treated as a "candidate" model
-    The shadow model receives the same data as the serving model for testing
-    The system collects samples until reaching a predetermined critical threshold (critical_sample)
-    The system compares the average metrics of the candidate and serving models
-    The candidate model advances to the canary stage only if its average metric exceeds the serving model's metric by a specific threshold (t[index])
-    If performance is poor or the error rate exceeds thresholds, the model is deprecated and all traffic reverts to the serving model
+    The new `candidate` model is tagged as "shadow" and treated as a "candidate" model in [deploy](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/9643ffb1e3ab4d686db174a87e31fcff85d72287/deploy/app.py#L505) container, 
+    the candidate model receives the same data as the serving model for online evaluation. The [monitor](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/9643ffb1e3ab4d686db174a87e31fcff85d72287/monitor/app.py#L628) container will be comparing the average metrics of the candidate and serving models, including ROUGE, acc and error rate. The candidate model advances to the canary stage only if its average metric exceeds the serving model's metric by a specific threshold (t[index])
+    If performance is poor or the error rate exceeds thresholds, the model is deprecated and all traffic reverts to the serving model.
 
 -   Canary Stage:
 
-    The canary model receives a portion of actual traffic for testing
-    The system evaluates multiple metrics, including error rate, response time, etc.
+    The canary model receives a [portion](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/9643ffb1e3ab4d686db174a87e31fcff85d72287/deploy/app.py#L661) of actual traffic for testing.
+    The system [evaluates](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/9643ffb1e3ab4d686db174a87e31fcff85d72287/monitor/app.py#L745) just error rate calculated by response time and http timeout, etc.
     If the error rate exceeds the threshold at any point, the system immediately rolls back to the serving model
-    After collecting sufficient samples, the system checks performance metrics again
+    After collecting sufficient samples, the system checks performance metrics again.
 
 -   Canary to Serving:
 
-    If canary testing is successful and performance metrics remain better than the original model, the new model is tagged as "serving"
-    The previous serving model is deprecated
-    The system migrates the candidate model's metric records to the serving model position
-    All traffic is routed to the new serving model
+    If canary testing is successful and the error rate is not exceeding threshold value, the new model is [tagged](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/9643ffb1e3ab4d686db174a87e31fcff85d72287/deploy/app.py#L449) as "serving".
+    The previous serving model is deprecated. The [system](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/9643ffb1e3ab4d686db174a87e31fcff85d72287/monitor/app.py#L580) migrates the candidate model's metric records to the serving model position. All traffic is routed to the new serving model. 
 
 All stage transitions are protected with thread locks to ensure consistency. Models' status will be updated and maintained to be consistent with deploy docker.
+
 
 ## IX. Data Monitoring
 
