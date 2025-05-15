@@ -354,7 +354,7 @@ To ensure that trained models meet a minimum quality before deployment, we imple
 
 ## VIII. Staged Deployment
 
-Initially, the first model that meets the metric requirements is tagged as the "serving" model. When a new model completes training, it goes through the following deployment process:
+Initially, the first model that meets the metric requirements is tagged as the "serving" model. When a new model completes training, it goes through the [following](https://github.com/YunchiZ/ECE-GY-9183-Project/blob/57f553de7b4885293e8bd3f9988eaa30cfe6c468/monitor/app.py#L601) deployment process:
 
 -   Shadow Stage:
 
