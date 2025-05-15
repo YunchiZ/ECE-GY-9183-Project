@@ -255,6 +255,9 @@ The goal of this task if to identify fake news. This helps users assess the cred
     - [Classification](./train/classification/classification_app.py#L110): lr, accuracy, f1
     - [Fakenews](./train/fake/fakenews_app.py#L122): lr, accuracy, f1
 
+![wandb log1](wandb1.png)
+![wandb log2](wandb2.png)
+
 ### 6) Scheduling Training Jobs
 
 #### Ray Tune
@@ -266,6 +269,8 @@ This project use [Ray Tune](./train/summarize/summary_app.py#L334) for hyperpara
 #### LoRA
 
 To reduce training time and memory usage in Summary Task, this project uses [LoRA](./train/summarize/summary_app.py#L334) for fine-tuning the BART model. - Training time decreased from 1.5 hours to 50 mins by testing on 10000 sample data.
+
+![summary train example](summary_train.png)
 
 ## VII. Model Serving
 
